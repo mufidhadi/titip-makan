@@ -11,10 +11,10 @@ def serialize_utc(dt: Optional[datetime]) -> Optional[str]:
 
 class SessionCreate(BaseModel):
     title: str = Field(..., examples=["Titip Makan 7/09/2026"])
-    coordinator_name: str = Field(default="Zi", examples=["Zi"])
-    coordinator_phone: Optional[str] = Field(default=None, examples=["6281234567890"])
+    coordinator_name: str = Field(default="Irzi", examples=["Irzi"])
+    coordinator_phone: Optional[str] = Field(default="+62 815-1382-5480", examples=["+62 815-1382-5480"])
     vendor_options: List[str] = Field(default_factory=lambda: ["Mie Ayam", "Babun"])
-    payment_info: Optional[str] = Field(default=None, examples=["BCA 1234567 a.n. Zi / QRIS"])
+    payment_info: Optional[str] = Field(default="gopay ke +62 815-1382-5480", examples=["gopay ke +62 815-1382-5480"])
     cutoff_minutes: Optional[int] = Field(default=30, description="Cutoff duration in minutes from now")
 
 class SessionOut(BaseModel):

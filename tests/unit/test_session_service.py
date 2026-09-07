@@ -51,3 +51,15 @@ async def test_close_session(db_session):
 
     active = await service.get_active_session()
     assert active is None
+
+@pytest.mark.asyncio
+async def test_create_session_with_defaults(db_session):
+    service = SessionService(db_session)
+    session_data = SessionCreate(
+        title="Titip Makan Siang"
+    )
+    session = await service.create_session(session_data)
+    assert session.coordinator_name == "Irzi"
+    assert session.payment_info == "gopay ke +62 815-1382-5480"
+    assert session.coordinator_phone == "+62 815-1382-5480"
+
