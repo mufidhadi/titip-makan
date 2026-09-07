@@ -116,7 +116,6 @@ function renderAggregatedItems(items) {
                     <span class="text-sm font-extrabold text-slate-900 bg-white border border-slate-200 px-2 py-0.5 rounded-lg shadow-sm">${item.quantity}x</span>
                 </div>
                 <h4 class="font-bold text-slate-800 text-sm mt-2">${item.item_name}</h4>
-                ${item.variant ? `<p class="text-xs text-slate-600 font-medium">Varian: <span class="text-indigo-600 font-semibold">${item.variant}</span></p>` : ''}
                 ${notesHtml}
             </div>
             <div class="mt-3 text-right text-xs font-semibold text-slate-700">
@@ -155,8 +154,7 @@ function renderOrdersTable(orders) {
             <td class="py-2.5 px-3 font-bold text-slate-800">${o.user_name}</td>
             <td class="py-2.5 px-3">${o.item_name} <span class="text-[10px] text-slate-400">(${o.vendor})</span></td>
             <td class="py-2.5 px-3 text-slate-600">
-                ${o.variant ? `<span class="font-medium text-indigo-600">${o.variant}</span>` : '-'}
-                ${o.notes ? `<span class="block text-[11px] text-slate-400 italic">Note: ${o.notes}</span>` : ''}
+                ${o.notes ? `<span class="block text-[11px] text-slate-600 italic">"${o.notes}"</span>` : '-'}
             </td>
             <td class="py-2.5 px-3">${priceCell}</td>
             <td class="py-2.5 px-3">${paymentBadge}</td>

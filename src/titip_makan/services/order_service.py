@@ -74,19 +74,11 @@ class OrderService:
         import json
         tenants_set = set(["Mie Ayam", "Babun", "Nasi Goreng", "Dimsum"])
         menus_dict = defaultdict(set)
-        variants_dict = defaultdict(set)
 
         menus_dict["Mie Ayam"].update(["Mie Ayam", "Mie Ayam Bakso"])
-        variants_dict["Mie Ayam"].update(["Pangsit Rebus", "Pangsit Goreng", "Polos"])
-
         menus_dict["Babun"].update(["Babun Nasi Ayam", "Babun Nasi Telor"])
-        variants_dict["Babun"].update(["Lada Hitam", "Kremes", "Daging Suwir", "Telor Dobel"])
-
         menus_dict["Nasi Goreng"].update(["Nasi Goreng Ayam", "Nasi Goreng Telor"])
-        variants_dict["Nasi Goreng"].update(["Pedas Sedang", "Pedas Banget", "Tidak Pedas"])
-
         menus_dict["Dimsum"].update(["Dimsum Ori isi 5", "Dimsum Mentai"])
-        variants_dict["Dimsum"].update(["Ori", "Mentai", "Frozen 1 Pack"])
 
         if session_id:
             session = await self.session_repo.get_by_id(session_id)
@@ -99,23 +91,19 @@ class OrderService:
                     tenants_set.add(opt)
 
         distinct_items = await self.order_repo.get_distinct_items()
-        for vendor, item_name, variant in distinct_items:
+        for vendor, item_name, _ in distinct_items:
             if vendor:
                 tenants_set.add(vendor)
                 if item_name:
                     menus_dict[vendor].add(item_name)
-                if variant:
-                    variants_dict[vendor].add(variant)
 
         return {
             "tenants": sorted(list(tenants_set)),
-            "menus": {k: sorted(list(v)) for k, v in menus_dict.items()},
-            "variants": {k: sorted(list(v)) for k, v in variants_dict.items()}
+            "menus": {k: sorted(list(v)) for k, v in menus_dict.items()}
         }
 
     async def delete_order(self, order_id: int) -> bool:
         return await self.order_repo.delete(order_id)
-
 
     async def get_session_summary(self, session_id: int) -> SessionSummary:
         session = await self.session_repo.get_by_id(session_id)
@@ -125,7 +113,7 @@ class OrderService:
         orders = await self.order_repo.get_by_session(session_id)
         order_schemas = [self._to_schema(o) for o in orders]
 
-        # Aggregate items by (vendor, item_name, variant)
+        # Aggregate items by (vendor, item_name)
         item_groups: Dict[tuple, Dict] = defaultdict(lambda: {
             "quantity": 0,
             "subtotal": 0,
@@ -137,11 +125,16 @@ class OrderService:
         unpaid_count = 0
 
         for o in order_schemas:
-            key = (o.vendor, o.item_name, o.variant)
+            key = (o.vendor, o.item_name)
             item_groups[key]["quantity"] += 1
             item_groups[key]["subtotal"] += o.price
+            notes_parts = []
             if o.notes:
-                item_groups[key]["notes"].append(f"{o.user_name}: {o.notes}")
+                notes_parts.append(o.notes)
+            elif o.variant:
+                notes_parts.append(o.variant)
+            if notes_parts:
+                item_groups[key]["notes"].append(f"{o.user_name}: {', '.join(notes_parts)}")
 
             total_amount += o.price
             if o.is_paid:
@@ -150,12 +143,12 @@ class OrderService:
                 unpaid_count += 1
 
         aggregated_list: List[AggregatedItem] = []
-        for (vendor, item_name, variant), stats in item_groups.items():
+        for (vendor, item_name), stats in item_groups.items():
             aggregated_list.append(
                 AggregatedItem(
                     vendor=vendor,
                     item_name=item_name,
-                    variant=variant,
+                    variant="",
                     quantity=stats["quantity"],
                     subtotal=stats["subtotal"],
                     notes_list=stats["notes"]
@@ -179,10 +172,9 @@ class OrderService:
         ]
 
         for item in aggregated_list:
-            variant_str = f" ({item.variant})" if item.variant else ""
             price_str = f" - Rp {format_idr(item.subtotal)}" if item.subtotal > 0 else ""
             vendor_str = f"[{item.vendor}] " if item.vendor else ""
-            wa_lines.append(f"• {item.quantity}x {vendor_str}{item.item_name}{variant_str}{price_str}")
+            wa_lines.append(f"• {item.quantity}x {vendor_str}{item.item_name}{price_str}")
             if item.notes_list:
                 for note in item.notes_list:
                     wa_lines.append(f"   ↳ {note}")
@@ -190,12 +182,11 @@ class OrderService:
         wa_lines.append("")
         wa_lines.append("📝 *Daftar Pemesan:*")
         for idx, o in enumerate(order_schemas, 1):
-            variant_str = f" ({o.variant})" if o.variant else ""
             status_icon = "✅ Lunas" if o.is_paid else "⏳ Belum"
-            price_str = f" - Rp {format_idr(o.price)}" if o.price > 0 else ""
+            price_str = f" - Rp {format_idr(o.price)}" if o.price > 0 else " - (Belum di-set)"
             note_str = f" [Catatan: {o.notes}]" if o.notes else ""
             vendor_str = f"[{o.vendor}] " if o.vendor else ""
-            wa_lines.append(f"{idx}. {o.user_name} - {vendor_str}{o.item_name}{variant_str}{price_str}{note_str} ({status_icon})")
+            wa_lines.append(f"{idx}. {o.user_name} - {vendor_str}{o.item_name}{price_str}{note_str} ({status_icon})")
 
         if session.payment_info:
             wa_lines.append("")
