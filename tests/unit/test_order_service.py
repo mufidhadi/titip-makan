@@ -1,0 +1,143 @@
+import pytest
+from datetime import datetime, timedelta, timezone
+from titip_makan.services.session_service import SessionService
+from titip_makan.services.order_service import OrderService
+from titip_makan.schemas.session import SessionCreate
+from titip_makan.schemas.order import OrderCreate
+
+@pytest.mark.asyncio
+async def test_create_order_atomic(db_session):
+    session_service = SessionService(db_session)
+    order_service = OrderService(db_session)
+
+    session = await session_service.create_session(
+        SessionCreate(
+            title="Titip Makan 7/09/2026",
+            coordinator_name="Zi",
+            vendor_options=["Mie Ayam", "Babun"],
+            payment_info="BCA 1234567 a.n. Zi",
+            cutoff_minutes=60
+        )
+    )
+
+    # Amal orders Mie Ayam Pangsit Rebus
+    order1 = await order_service.create_order(
+        session.id,
+        OrderCreate(
+            user_name="Amal",
+            vendor="Mie Ayam",
+            item_name="Mie Ayam",
+            variant="Pangsit Rebus",
+            notes="tanpa daun bawang",
+            price=15000
+        )
+    )
+
+    # Shazi orders Babun Nasi Ayam Lada Hitam
+    order2 = await order_service.create_order(
+        session.id,
+        OrderCreate(
+            user_name="Shazi",
+            vendor="Babun",
+            item_name="Babun Nasi Ayam",
+            variant="Lada Hitam",
+            notes="pedas manis",
+            price=20000
+        )
+    )
+
+    orders = await order_service.get_orders_by_session(session.id)
+    assert len(orders) == 2
+    assert orders[0].user_name == "Amal"
+    assert orders[1].user_name == "Shazi"
+
+@pytest.mark.asyncio
+async def test_order_aggregation_summary(db_session):
+    session_service = SessionService(db_session)
+    order_service = OrderService(db_session)
+
+    session = await session_service.create_session(
+        SessionCreate(
+            title="Titip Makan 7/09/2026",
+            coordinator_name="Zi",
+            vendor_options=["Mie Ayam", "Babun"],
+            payment_info="BCA 1234567 a.n. Zi",
+            cutoff_minutes=60
+        )
+    )
+
+    # Add multiple orders
+    await order_service.create_order(
+        session.id,
+        OrderCreate(user_name="Amal", vendor="Mie Ayam", item_name="Mie Ayam", variant="Pangsit Rebus", price=15000)
+    )
+    await order_service.create_order(
+        session.id,
+        OrderCreate(user_name="Mufid", vendor="Mie Ayam", item_name="Mie Ayam", variant="Pangsit Rebus", price=15000)
+    )
+    await order_service.create_order(
+        session.id,
+        OrderCreate(user_name="Jordan", vendor="Mie Ayam", item_name="Mie Ayam", variant="Pangsit Goreng", price=15000)
+    )
+    await order_service.create_order(
+        session.id,
+        OrderCreate(user_name="Shazi", vendor="Babun", item_name="Babun Nasi Ayam", variant="Lada Hitam", price=22000)
+    )
+
+    summary = await order_service.get_session_summary(session.id)
+    assert summary.total_orders == 4
+    assert summary.total_amount == 67000
+    
+    # Check item aggregation: "Mie Ayam - Pangsit Rebus" should be 2
+    rebus_item = next(i for i in summary.aggregated_items if i.item_name == "Mie Ayam" and i.variant == "Pangsit Rebus")
+    assert rebus_item.quantity == 2
+
+    # Check WA formatted text recap generation
+    assert "Rekap Titip Makan" in summary.whatsapp_recap_text
+    assert "Mie Ayam" in summary.whatsapp_recap_text
+
+@pytest.mark.asyncio
+async def test_order_cutoff_expiration(db_session):
+    session_service = SessionService(db_session)
+    order_service = OrderService(db_session)
+
+    session = await session_service.create_session(
+        SessionCreate(
+            title="Titip Makan Cepat",
+            coordinator_name="Zi",
+            vendor_options=["Mie Ayam"],
+            payment_info="BCA 1234567 a.n. Zi",
+            cutoff_minutes=-1  # In the past
+        )
+    )
+
+    with pytest.raises(ValueError, match="order deadline has passed"):
+        await order_service.create_order(
+            session.id,
+            OrderCreate(user_name="Bilal", vendor="Mie Ayam", item_name="Mie Ayam", variant="Polos")
+        )
+
+@pytest.mark.asyncio
+async def test_delete_order(db_session):
+    session_service = SessionService(db_session)
+    order_service = OrderService(db_session)
+
+    session = await session_service.create_session(
+        SessionCreate(
+            title="Titip Makan Siang",
+            coordinator_name="Zi",
+            vendor_options=["Mie Ayam"]
+        )
+    )
+
+    order = await order_service.create_order(
+        session.id,
+        OrderCreate(user_name="Bilal", vendor="Mie Ayam", item_name="Mie Ayam")
+    )
+
+    deleted = await order_service.delete_order(order.id)
+    assert deleted is True
+
+    orders = await order_service.get_orders_by_session(session.id)
+    assert len(orders) == 0
+

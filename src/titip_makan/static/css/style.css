@@ -1,0 +1,8 @@
+/* Custom styling enhancements */
+.order-card {
+    transition: all 0.2s ease;
+}
+.order-card:hover {
+    border-color: #cbd5e1;
+    transform: translateY(-1px);
+}

@@ -1,0 +1,40 @@
+[project]
+name = "titip-makan"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "mufid", email = "mufidhadi@madhani.id" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "aiosqlite>=0.22.1",
+    "fastapi>=0.141.1",
+    "greenlet>=3.5.5",
+    "jinja2>=3.1.6",
+    "pydantic>=2.13.5",
+    "pydantic-settings>=2.15.0",
+    "python-multipart>=0.0.32",
+    "sqlalchemy>=2.0.52",
+    "uvicorn[standard]>=0.52.4",
+]
+
+[project.scripts]
+titip-makan = "titip_makan:main"
+
+[build-system]
+requires = ["uv_build>=0.12.5,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+

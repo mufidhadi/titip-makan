@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard Koordinator - Titip Makan{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <div>
+            <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <span>👑</span> Dashboard Koordinator Titip Makan
+            </h2>
+            <p class="text-xs text-slate-500">Kelola sesi, rekap belanjaan otomatis, dan status pembayaran</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <button id="btn-refresh" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition flex items-center gap-1">
+                <span>🔄</span> Segarkan
+            </button>
+        </div>
+    </div>
+
+    <!-- Section 1: Create New Session (Shown if no active session) -->
+    <div id="create-session-card" class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+        <h3 class="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
+            <span>✨</span> Buka Sesi Titip Makan Baru
+        </h3>
+        <form id="create-session-form" class="space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Judul Sesi *</label>
+                    <input type="text" id="cs-title" required value="Titip Makan 7/09/2026"
+                        class="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Nama Koordinator *</label>
+                    <input type="text" id="cs-coordinator" required value="Zi"
+                        class="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Pilihan Vendor / Tenant (Pisahkan koma)</label>
+                    <input type="text" id="cs-vendors" value="Mie Ayam, Babun, Nasi Goreng, Dimsum"
+                        class="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Batas Waktu Pemesanan (Menit)</label>
+                    <input type="number" id="cs-cutoff" value="30" min="5" max="240"
+                        class="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Informasi Pembayaran / No Rekening / QRIS</label>
+                <input type="text" id="cs-payment" value="BCA 1234567 a.n. Zi / QRIS terlampir"
+                    class="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+            </div>
+
+            <button type="submit" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-xl transition shadow-sm flex items-center gap-2">
+                <span>🚀</span> Mulai Sesi Titip Makan
+            </button>
+        </form>
+    </div>
+
+    <!-- Section 2: Active Session Details & Actions (Shown if active session exists) -->
+    <div id="active-session-management" class="hidden space-y-6">
+        <!-- Control Bar -->
+        <div class="bg-indigo-900 text-white p-5 rounded-2xl shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">SESI SEDANG BERLANGSUNG</span>
+                    <span id="coord-session-id" class="text-xs text-indigo-200">ID: -</span>
+                </div>
+                <h3 id="coord-session-title" class="text-xl font-bold">Judul Sesi</h3>
+                <p id="coord-session-info" class="text-xs text-indigo-200 mt-1">Batas Waktu: -</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+                <button id="btn-copy-link" class="px-3.5 py-2 bg-indigo-800 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl border border-indigo-700 transition flex items-center gap-1.5">
+                    <span>🔗</span> Salin Link Order
+                </button>
+                <button id="btn-copy-wa" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl transition flex items-center gap-1.5 shadow-sm">
+                    <span>📋</span> Salin Rekap WA
+                </button>
+                <button id="btn-close-session" class="px-3.5 py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold rounded-xl transition flex items-center gap-1.5 shadow-sm">
+                    <span>🔒</span> Tutup Sesi
+                </button>
+            </div>
+        </div>
+
+        <!-- Metric Cards -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                <p class="text-xs text-slate-500 font-medium">Total Pesanan</p>
+                <p id="metric-orders" class="text-2xl font-bold text-slate-800 mt-1">0</p>
+            </div>
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                <p class="text-xs text-slate-500 font-medium">Total Tagihan</p>
+                <p id="metric-amount" class="text-2xl font-bold text-slate-800 mt-1">Rp 0</p>
+            </div>
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                <p class="text-xs text-slate-500 font-medium">Sudah Lunas</p>
+                <p id="metric-paid" class="text-2xl font-bold text-emerald-600 mt-1">0</p>
+            </div>
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                <p class="text-xs text-slate-500 font-medium">Belum Bayar</p>
+                <p id="metric-unpaid" class="text-2xl font-bold text-amber-600 mt-1">0</p>
+            </div>
+        </div>
+
+        <!-- Section: Item Aggregator for Purchasing -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                    <span>🛒</span> Ringkasan Belanjaan (Untuk Dipesan ke Toko)
+                </h3>
+                <span class="text-xs text-slate-500">Auto-dihitung per varian</span>
+            </div>
+            <div id="aggregated-items-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                <!-- Aggregated items cards will be rendered here -->
+            </div>
+        </div>
+
+        <!-- Section: Order Detail & Payment Reconciliation Table -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+            <h3 class="text-base font-bold text-slate-800 mb-3 flex items-center gap-2">
+                <span>💰</span> Rincian Pemesan & Status Pembayaran
+            </h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                        <tr class="border-b border-slate-200 bg-slate-50 text-slate-600 font-semibold">
+                            <th class="py-2.5 px-3">No</th>
+                            <th class="py-2.5 px-3">Nama Pemesan</th>
+                            <th class="py-2.5 px-3">Pesanan</th>
+                            <th class="py-2.5 px-3">Varian &amp; Catatan</th>
+                            <th class="py-2.5 px-3">Biaya</th>
+                            <th class="py-2.5 px-3">Status Bayar</th>
+                            <th class="py-2.5 px-3 text-right">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="coordinator-orders-table" class="divide-y divide-slate-100">
+                        <!-- Populated by coordinator.js -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/coordinator.js"></script>
+{% endblock %}
