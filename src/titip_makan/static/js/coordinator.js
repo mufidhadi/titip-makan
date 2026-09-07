@@ -1,22 +1,55 @@
 let activeSessionId = null;
+let pollTimer = null;
 
 async function initCoordinator() {
     await checkActiveSession();
     setupEventListeners();
+
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = setInterval(async () => {
+        if (activeSessionId) {
+            await loadSummary();
+        }
+    }, 5000);
+}
+
+function parseUtcDate(dateStr) {
+    if (!dateStr) return null;
+    if (!dateStr.endsWith("Z") && !dateStr.includes("+")) {
+        dateStr += "Z";
+    }
+    return new Date(dateStr);
 }
 
 async function checkActiveSession() {
     try {
-        const resp = await fetch("/api/v1/sessions/active");
+        const resp = await fetch("/api/v1/sessions/latest");
         const session = await resp.json();
 
-        if (session && session.status === "OPEN") {
+        if (session) {
             activeSessionId = session.id;
             document.getElementById("create-session-card").classList.add("hidden");
             document.getElementById("active-session-management").classList.remove("hidden");
             document.getElementById("coord-session-id").innerText = `Session #${session.id}`;
             document.getElementById("coord-session-title").innerText = session.title;
-            document.getElementById("coord-session-info").innerText = `Koordinator: ${session.coordinator_name} • Batas: ${session.cutoff_at ? new Date(session.cutoff_at).toLocaleTimeString() : 'Tanpa Batas'}`;
+            
+            const cutoffDate = parseUtcDate(session.cutoff_at);
+            const cutoffText = cutoffDate ? cutoffDate.toLocaleTimeString("id-ID", { hour: '2-digit', minute: '2-digit' }) : 'Tanpa Batas';
+            document.getElementById("coord-session-info").innerText = `Koordinator: ${session.coordinator_name} • Batas Waktu: ${cutoffText}`;
+
+            const badge = document.getElementById("coord-status-badge");
+            const closeBtn = document.getElementById("btn-close-session");
+
+            if (session.status === "CLOSED") {
+                badge.className = "px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/40";
+                badge.innerText = "SESI SUDAH DITUTUP (SELESAI)";
+                closeBtn.classList.add("hidden");
+            } else {
+                badge.className = "px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40";
+                badge.innerText = "SESI SEDANG BERLANGSUNG";
+                closeBtn.classList.remove("hidden");
+            }
+
             await loadSummary();
         } else {
             activeSessionId = null;
@@ -121,10 +154,14 @@ function renderOrdersTable(orders) {
             </td>
             <td class="py-2.5 px-3 font-semibold text-slate-800">Rp ${o.price.toLocaleString("id-ID")}</td>
             <td class="py-2.5 px-3">${paymentBadge}</td>
-            <td class="py-2.5 px-3 text-right">
-                <button onclick="togglePaymentStatus(${o.id}, ${!o.is_paid})" 
+            <td class="py-2.5 px-3 text-right space-x-1">
+                <button onclick="window.togglePaymentStatus(${o.id}, ${!o.is_paid})" 
                     class="px-2 py-1 rounded-lg text-[11px] font-semibold border ${o.is_paid ? 'border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100' : 'border-emerald-300 text-emerald-700 bg-emerald-50 hover:bg-emerald-100'} transition">
                     ${o.is_paid ? 'Set Belum' : 'Set Lunas'}
+                </button>
+                <button onclick="window.deleteOrder(${o.id}, '${o.user_name}')" 
+                    class="px-2 py-1 rounded-lg text-[11px] font-semibold border border-rose-200 text-rose-600 bg-rose-50 hover:bg-rose-100 transition">
+                    🗑️
                 </button>
             </td>
         `;
@@ -132,7 +169,7 @@ function renderOrdersTable(orders) {
     });
 }
 
-async function togglePaymentStatus(orderId, newStatus) {
+window.togglePaymentStatus = async function(orderId, newStatus) {
     try {
         const resp = await fetch(`/api/v1/orders/${orderId}/payment`, {
             method: "PATCH",
@@ -143,12 +180,43 @@ async function togglePaymentStatus(orderId, newStatus) {
             await loadSummary();
         }
     } catch (err) {
-        alert("Gagal memperbarui status pembayaran.");
+        showToast("Gagal memperbarui status pembayaran.", "error");
     }
-}
+};
+
+window.deleteOrder = async function(orderId, userName) {
+    if (!confirm(`Hapus pesanan dari "${userName}"?`)) return;
+    try {
+        const resp = await fetch(`/api/v1/orders/${orderId}`, {
+            method: "DELETE"
+        });
+        if (resp.ok) {
+            await loadSummary();
+            showToast("Pesanan berhasil dihapus.", "success");
+        } else {
+            showToast("Gagal menghapus pesanan.", "error");
+        }
+    } catch (err) {
+        showToast("Terjadi kesalahan saat menghapus pesanan.", "error");
+    }
+};
 
 function setupEventListeners() {
-    document.getElementById("btn-refresh").addEventListener("click", loadSummary);
+    document.getElementById("btn-refresh").addEventListener("click", () => {
+        loadSummary();
+        showToast("Data diperbarui.", "info");
+    });
+
+    const newSessionBtn = document.getElementById("btn-new-session-toggle");
+    if (newSessionBtn) {
+        newSessionBtn.addEventListener("click", () => {
+            const card = document.getElementById("create-session-card");
+            card.classList.toggle("hidden");
+            if (!card.classList.contains("hidden")) {
+                card.scrollIntoView({ behavior: 'smooth' });
+            }
+        });
+    }
 
     // Create session form
     document.getElementById("create-session-form").addEventListener("submit", async (e) => {
@@ -175,32 +243,32 @@ function setupEventListeners() {
             });
 
             if (!resp.ok) {
-                alert("Gagal membuat sesi.");
+                showToast("Gagal membuat sesi.", "error");
                 return;
             }
 
-            alert("✅ Sesi titip makan berhasil dibuat!");
+            showToast("Sesi titip makan berhasil dibuat!", "success");
             await checkActiveSession();
         } catch (err) {
-            alert("Terjadi kesalahan jaringan.");
+            showToast("Terjadi kesalahan jaringan.", "error");
         }
     });
 
     // Copy WA recap text
     document.getElementById("btn-copy-wa").addEventListener("click", async () => {
         if (!window.currentRecapText) {
-            alert("Belum ada teks rekap.");
+            showToast("Belum ada teks rekap.", "warning");
             return;
         }
         await navigator.clipboard.writeText(window.currentRecapText);
-        alert("📋 Teks rekap WhatsApp berhasil disalin ke clipboard! Tinggal paste di grup MTN CORE.");
+        showToast("Teks rekap WhatsApp disalin ke clipboard!", "success");
     });
 
     // Copy link order
     document.getElementById("btn-copy-link").addEventListener("click", async () => {
         const url = window.location.origin + "/";
         await navigator.clipboard.writeText(url);
-        alert("🔗 Link order berhasil disalin: " + url);
+        showToast("Link order disalin: " + url, "info");
     });
 
     // Close session
@@ -215,14 +283,14 @@ function setupEventListeners() {
             });
 
             if (!resp.ok) {
-                alert("PIN salah atau sesi gagal ditutup.");
+                showToast("PIN salah atau sesi gagal ditutup.", "error");
                 return;
             }
 
-            alert("🔒 Sesi berhasil ditutup. Rekap akhir siap dikirim!");
+            showToast("Sesi berhasil ditutup. Rekap akhir tetap tersimpan!", "success");
             await checkActiveSession();
         } catch (err) {
-            alert("Gagal menutup sesi.");
+            showToast("Gagal menutup sesi.", "error");
         }
     });
 }

@@ -42,6 +42,12 @@ class SessionService:
         )
         return self._to_schema(session)
 
+    async def get_latest_session(self) -> Optional[SessionOut]:
+        session = await self.repo.get_latest()
+        if not session:
+            return None
+        return self._to_schema(session)
+
     async def get_active_session(self) -> Optional[SessionOut]:
         session = await self.repo.get_active()
         if not session:
@@ -50,7 +56,6 @@ class SessionService:
         # Check if cutoff has passed and should auto-close
         if session.cutoff_at:
             now = datetime.now(timezone.utc)
-            # handle timezone naive or aware comparison
             cutoff = session.cutoff_at if session.cutoff_at.tzinfo else session.cutoff_at.replace(tzinfo=timezone.utc)
             if now > cutoff:
                 session = await self.repo.close(session.id)

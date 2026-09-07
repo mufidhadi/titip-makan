@@ -113,19 +113,22 @@ class OrderService:
         # Sort aggregated items by vendor then quantity descending
         aggregated_list.sort(key=lambda x: (x.vendor, -x.quantity))
 
+        def format_idr(val: int) -> str:
+            return f"{val:,}".replace(",", ".")
+
         # Generate WhatsApp recap message
         wa_lines = [
             f"📋 *Rekap Titip Makan: {session.title}*",
             f"👤 Koordinator: {session.coordinator_name}",
             f"📊 Total Pesanan: {len(order_schemas)} porsi",
-            f"💰 Total Biaya: Rp {total_amount:,} (Lunas: {paid_count}, Belum: {unpaid_count})",
+            f"💰 Total Biaya: Rp {format_idr(total_amount)} (Lunas: {paid_count}, Belum: {unpaid_count})",
             "",
             "🛒 *Ringkasan Belanjaan:*"
         ]
 
         for item in aggregated_list:
             variant_str = f" ({item.variant})" if item.variant else ""
-            price_str = f" - Rp {item.subtotal:,}" if item.subtotal > 0 else ""
+            price_str = f" - Rp {format_idr(item.subtotal)}" if item.subtotal > 0 else ""
             vendor_str = f"[{item.vendor}] " if item.vendor else ""
             wa_lines.append(f"• {item.quantity}x {vendor_str}{item.item_name}{variant_str}{price_str}")
             if item.notes_list:
@@ -137,7 +140,7 @@ class OrderService:
         for idx, o in enumerate(order_schemas, 1):
             variant_str = f" ({o.variant})" if o.variant else ""
             status_icon = "✅ Lunas" if o.is_paid else "⏳ Belum"
-            price_str = f" - Rp {o.price:,}" if o.price > 0 else ""
+            price_str = f" - Rp {format_idr(o.price)}" if o.price > 0 else ""
             note_str = f" [Catatan: {o.notes}]" if o.notes else ""
             vendor_str = f"[{o.vendor}] " if o.vendor else ""
             wa_lines.append(f"{idx}. {o.user_name} - {vendor_str}{o.item_name}{variant_str}{price_str}{note_str} ({status_icon})")

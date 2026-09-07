@@ -17,6 +17,13 @@ class SessionRepository:
         payment_info: Optional[str] = None,
         cutoff_at: Optional[datetime] = None
     ) -> PoolSession:
+        # Auto-close any previous open sessions
+        await self.db.execute(
+            update(PoolSession)
+            .where(PoolSession.status == "OPEN")
+            .values(status="CLOSED", closed_at=datetime.now(timezone.utc))
+        )
+
         session = PoolSession(
             title=title,
             coordinator_name=coordinator_name,
@@ -33,6 +40,12 @@ class SessionRepository:
 
     async def get_by_id(self, session_id: int) -> Optional[PoolSession]:
         result = await self.db.execute(select(PoolSession).where(PoolSession.id == session_id))
+        return result.scalars().first()
+
+    async def get_latest(self) -> Optional[PoolSession]:
+        result = await self.db.execute(
+            select(PoolSession).order_by(PoolSession.id.desc())
+        )
         return result.scalars().first()
 
     async def get_active(self) -> Optional[PoolSession]:

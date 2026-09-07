@@ -19,6 +19,7 @@ const MENU_CATALOG = {
 
 let currentSession = null;
 let pollTimer = null;
+let countdownInterval = null;
 
 async function initApp() {
     setupQuickNames();
@@ -26,9 +27,17 @@ async function initApp() {
     setupEventListeners();
 }
 
+function parseUtcDate(dateStr) {
+    if (!dateStr) return null;
+    if (!dateStr.endsWith("Z") && !dateStr.includes("+")) {
+        dateStr += "Z";
+    }
+    return new Date(dateStr);
+}
+
 async function fetchActiveSession() {
     try {
-        const resp = await fetch("/api/v1/sessions/active");
+        const resp = await fetch("/api/v1/sessions/latest");
         const data = await resp.json();
         
         if (!data) {
@@ -48,8 +57,26 @@ async function fetchActiveSession() {
         document.getElementById("session-vendors").innerText = `Pilihan Vendor: ${data.vendor_options.join(", ")}`;
         document.getElementById("payment-info-text").innerText = data.payment_info || "Belum ada detail pembayaran.";
 
+        const statusBadge = document.getElementById("session-status-badge");
+        const submitBtn = document.getElementById("btn-submit-order");
+
+        if (data.status === "CLOSED") {
+            statusBadge.className = "px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-700";
+            statusBadge.innerText = "SESI DITUTUP";
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = "<span>🔒</span> Pemesanan Ditutup";
+            submitBtn.className = "w-full py-2.5 bg-slate-300 text-slate-500 font-semibold rounded-xl text-sm cursor-not-allowed flex items-center justify-center gap-2";
+            document.getElementById("countdown-timer").innerText = "DITUTUP";
+        } else {
+            statusBadge.className = "px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700";
+            statusBadge.innerText = "MEMBUAT PESANAN";
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = "<span>🚀</span> Kirim Pesanan (Anti-Ketimpa)";
+            submitBtn.className = "w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white font-semibold rounded-xl text-sm transition shadow-sm flex items-center justify-center gap-2";
+            startCountdown(data.cutoff_at);
+        }
+
         populateVendors(data.vendor_options);
-        startCountdown(data.cutoff_at);
         await loadOrders();
 
         if (pollTimer) clearInterval(pollTimer);
@@ -95,7 +122,6 @@ function handleVendorChange() {
         customVendorWrapper.classList.remove("hidden");
         customVendorInput.focus();
         
-        // Auto setup custom menu
         const opt = document.createElement("option");
         opt.value = "__custom__";
         opt.innerText = "➕ Ketik Menu Kustom...";
@@ -124,7 +150,6 @@ function handleVendorChange() {
         menuSelect.appendChild(opt);
     });
 
-    // Option for custom menu under existing vendor
     const customMenuOpt = document.createElement("option");
     customMenuOpt.value = "__custom__";
     customMenuOpt.innerText = "➕ Menu Lainnya (Ketik Manual)...";
@@ -176,7 +201,6 @@ function handleMenuChange() {
         });
     }
 
-    // Always add an option for Custom Variant
     const customVarLabel = document.createElement("label");
     customVarLabel.className = "flex items-center gap-2 p-2 rounded-lg border border-indigo-200 bg-indigo-50/30 hover:bg-indigo-50/60 cursor-pointer text-xs col-span-2";
     customVarLabel.innerHTML = `
@@ -185,7 +209,6 @@ function handleMenuChange() {
     `;
     container.appendChild(customVarLabel);
 
-    // Event listener for variant radios
     document.querySelectorAll('input[name="order-variant"]').forEach(radio => {
         radio.addEventListener("change", () => {
             if (radio.value === "__custom__") {
@@ -194,6 +217,100 @@ function handleMenuChange() {
             } else {
                 customVariantWrapper.classList.add("hidden");
             }
+        });
+    });
+}
+
+async function loadOrders() {
+    if (!currentSession) return;
+    try {
+        const resp = await fetch(`/api/v1/sessions/${currentSession.id}/orders`);
+        const orders = await resp.json();
+        renderOrdersList(orders);
+    } catch (err) {
+        console.error("Gagal memuat pesanan:", err);
+    }
+}
+
+function renderOrdersList(orders) {
+    const list = document.getElementById("orders-list");
+    const countBadge = document.getElementById("orders-count-badge");
+    countBadge.innerText = `${orders.length} Pesanan`;
+
+    if (!orders || orders.length === 0) {
+        list.innerHTML = `
+            <div class="text-center py-10 text-slate-400 text-xs">
+                Belum ada pesanan masuk. Jadilah yang pertama memesan! 🍜
+            </div>
+        `;
+        return;
+    }
+
+    const isSessionOpen = currentSession && currentSession.status === "OPEN";
+
+    list.innerHTML = "";
+    orders.forEach((o, index) => {
+        const item = document.createElement("div");
+        item.className = "order-card p-3 rounded-xl border border-slate-100 bg-slate-50 flex items-center justify-between gap-3 text-xs";
+        
+        const statusBadge = o.is_paid 
+            ? '<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold text-[10px]">✅ Lunas</span>'
+            : '<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold text-[10px]">⏳ Belum Bayar</span>';
+
+        const variantBadge = o.variant 
+            ? `<span class="bg-indigo-100 text-indigo-700 font-medium px-1.5 py-0.5 rounded text-[10px]">${o.variant}</span>` 
+            : "";
+
+        const notesText = o.notes ? `<p class="text-[11px] text-slate-500 mt-0.5 italic">"${o.notes}"</p>` : "";
+
+        const cancelBtn = isSessionOpen 
+            ? `<button onclick="window.cancelMyOrder(${o.id}, '${o.user_name}')" class="text-slate-400 hover:text-rose-600 transition ml-2 text-xs font-semibold" title="Batalkan pesanan">✕</button>`
+            : "";
+
+        item.innerHTML = `
+            <div class="flex items-start gap-2.5">
+                <span class="w-5 h-5 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-[10px] flex-shrink-0 mt-0.5">
+                    ${index + 1}
+                </span>
+                <div>
+                    <p class="font-bold text-slate-800 text-xs">${o.user_name} <span class="font-normal text-slate-500">• ${o.vendor}</span></p>
+                    <p class="text-slate-700 font-medium">${o.item_name} ${variantBadge}</p>
+                    ${notesText}
+                </div>
+            </div>
+            <div class="text-right flex-shrink-0 flex items-center gap-2">
+                <div>
+                    <p class="font-semibold text-slate-900 text-xs">Rp ${o.price.toLocaleString("id-ID")}</p>
+                    <div class="mt-1">${statusBadge}</div>
+                </div>
+                ${cancelBtn}
+            </div>
+        `;
+        list.appendChild(item);
+    });
+}
+
+window.cancelMyOrder = async function(orderId, userName) {
+    if (!confirm(`Batalkan pesanan untuk "${userName}"?`)) return;
+    try {
+        const resp = await fetch(`/api/v1/orders/${orderId}`, {
+            method: "DELETE"
+        });
+        if (resp.ok) {
+            await loadOrders();
+            showToast("Pesanan berhasil dibatalkan.", "success");
+        } else {
+            showToast("Gagal membatalkan pesanan.", "error");
+        }
+    } catch (err) {
+        showToast("Terjadi kesalahan jaringan.", "error");
+    }
+};
+
+function setupQuickNames() {
+    document.querySelectorAll(".name-tag").forEach(btn => {
+        btn.addEventListener("click", () => {
+            document.getElementById("input-username").value = btn.innerText;
         });
     });
 }
@@ -212,14 +329,14 @@ function setupEventListeners() {
 
     document.getElementById("order-form").addEventListener("submit", async (e) => {
         e.preventDefault();
-        if (!currentSession) {
-            alert("Sesi tidak aktif!");
+        if (!currentSession || currentSession.status !== "OPEN") {
+            showToast("Sesi pemesanan sudah ditutup atau tidak aktif!", "warning");
             return;
         }
 
         const username = document.getElementById("input-username").value.trim();
         if (!username) {
-            alert("Harap masukkan nama Anda!");
+            showToast("Harap masukkan nama Anda!", "warning");
             document.getElementById("input-username").focus();
             return;
         }
@@ -228,12 +345,12 @@ function setupEventListeners() {
         if (vendor === "__custom__") {
             vendor = document.getElementById("input-custom-vendor").value.trim();
             if (!vendor) {
-                alert("Harap isi nama tenant / vendor baru!");
+                showToast("Harap isi nama tenant / vendor baru!", "warning");
                 document.getElementById("input-custom-vendor").focus();
                 return;
             }
         } else if (!vendor) {
-            alert("Harap pilih vendor!");
+            showToast("Harap pilih vendor!", "warning");
             return;
         }
 
@@ -244,7 +361,7 @@ function setupEventListeners() {
         if (itemName === "__custom__") {
             itemName = document.getElementById("input-custom-menu").value.trim();
             if (!itemName) {
-                alert("Harap isi nama menu makanan!");
+                showToast("Harap isi nama menu makanan!", "warning");
                 document.getElementById("input-custom-menu").focus();
                 return;
             }
@@ -253,7 +370,7 @@ function setupEventListeners() {
             const data = JSON.parse(menuSelect.options[menuSelect.selectedIndex].dataset.itemData || "{}");
             price = data.price || 0;
         } else {
-            alert("Harap pilih menu makanan!");
+            showToast("Harap pilih menu makanan!", "warning");
             return;
         }
 
@@ -287,7 +404,7 @@ function setupEventListeners() {
 
             if (!resp.ok) {
                 const err = await resp.json();
-                alert(`Gagal: ${err.detail || "Gagal mengirim pesanan"}`);
+                showToast(`Gagal: ${err.detail || "Gagal mengirim pesanan"}`, "error");
                 return;
             }
 
@@ -298,9 +415,9 @@ function setupEventListeners() {
             document.getElementById("input-custom-variant").value = "";
             
             await loadOrders();
-            alert("✅ Pesanan berhasil disimpan! Tidak ada list yang tertimpa.");
+            showToast("Pesanan berhasil disimpan! Tidak ada list tertimpa.", "success");
         } catch (err) {
-            alert("Terjadi kesalahan jaringan.");
+            showToast("Terjadi kesalahan jaringan.", "error");
         } finally {
             submitBtn.disabled = false;
             submitBtn.innerHTML = "<span>🚀</span> Kirim Pesanan (Anti-Ketimpa)";
@@ -309,13 +426,21 @@ function setupEventListeners() {
 }
 
 function startCountdown(cutoffIsoString) {
+    if (countdownInterval) clearInterval(countdownInterval);
+
     const timerElem = document.getElementById("countdown-timer");
     if (!cutoffIsoString) {
         timerElem.innerText = "Tanpa Batas";
         return;
     }
 
-    const cutoffTime = new Date(cutoffIsoString).getTime();
+    const cutoffDate = parseUtcDate(cutoffIsoString);
+    if (!cutoffDate) {
+        timerElem.innerText = "Tanpa Batas";
+        return;
+    }
+
+    const cutoffTime = cutoffDate.getTime();
 
     function update() {
         const now = new Date().getTime();
@@ -323,7 +448,9 @@ function startCountdown(cutoffIsoString) {
 
         if (diff <= 0) {
             timerElem.innerText = "DITUTUP";
-            timerElem.classList.add("text-rose-600");
+            timerElem.className = "text-lg font-bold text-rose-600";
+            if (countdownInterval) clearInterval(countdownInterval);
+            fetchActiveSession();
             return;
         }
 
@@ -333,7 +460,7 @@ function startCountdown(cutoffIsoString) {
     }
 
     update();
-    setInterval(update, 1000);
+    countdownInterval = setInterval(update, 1000);
 }
 
 document.addEventListener("DOMContentLoaded", initApp);

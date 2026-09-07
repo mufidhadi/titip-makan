@@ -20,6 +20,11 @@ async def get_active_session(db: AsyncSession = Depends(get_db)):
     service = SessionService(db)
     return await service.get_active_session()
 
+@router.get("/latest", response_model=Optional[SessionOut])
+async def get_latest_session(db: AsyncSession = Depends(get_db)):
+    service = SessionService(db)
+    return await service.get_latest_session()
+
 @router.get("/{session_id}", response_model=SessionOut)
 async def get_session(session_id: int, db: AsyncSession = Depends(get_db)):
     service = SessionService(db)

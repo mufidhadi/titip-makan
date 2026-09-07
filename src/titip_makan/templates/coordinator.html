@@ -13,6 +13,9 @@
             <p class="text-xs text-slate-500">Kelola sesi, rekap belanjaan otomatis, dan status pembayaran</p>
         </div>
         <div class="flex items-center gap-2">
+            <button id="btn-new-session-toggle" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl transition flex items-center gap-1 shadow-sm">
+                <span>➕</span> Buat Sesi Baru
+            </button>
             <button id="btn-refresh" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition flex items-center gap-1">
                 <span>🔄</span> Segarkan
             </button>
@@ -69,7 +72,7 @@
         <div class="bg-indigo-900 text-white p-5 rounded-2xl shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
                 <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">SESI SEDANG BERLANGSUNG</span>
+                    <span id="coord-status-badge" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">SESI SEDANG BERLANGSUNG</span>
                     <span id="coord-session-id" class="text-xs text-indigo-200">ID: -</span>
                 </div>
                 <h3 id="coord-session-title" class="text-xl font-bold">Judul Sesi</h3>
