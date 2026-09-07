@@ -126,7 +126,8 @@ class OrderService:
         for item in aggregated_list:
             variant_str = f" ({item.variant})" if item.variant else ""
             price_str = f" - Rp {item.subtotal:,}" if item.subtotal > 0 else ""
-            wa_lines.append(f"• {item.quantity}x {item.item_name}{variant_str}{price_str}")
+            vendor_str = f"[{item.vendor}] " if item.vendor else ""
+            wa_lines.append(f"• {item.quantity}x {vendor_str}{item.item_name}{variant_str}{price_str}")
             if item.notes_list:
                 for note in item.notes_list:
                     wa_lines.append(f"   ↳ {note}")
@@ -138,7 +139,8 @@ class OrderService:
             status_icon = "✅ Lunas" if o.is_paid else "⏳ Belum"
             price_str = f" - Rp {o.price:,}" if o.price > 0 else ""
             note_str = f" [Catatan: {o.notes}]" if o.notes else ""
-            wa_lines.append(f"{idx}. {o.user_name} - {o.item_name}{variant_str}{price_str}{note_str} ({status_icon})")
+            vendor_str = f"[{o.vendor}] " if o.vendor else ""
+            wa_lines.append(f"{idx}. {o.user_name} - {vendor_str}{o.item_name}{variant_str}{price_str}{note_str} ({status_icon})")
 
         if session.payment_info:
             wa_lines.append("")

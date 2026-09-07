@@ -69,17 +69,51 @@ function populateVendors(vendors) {
         opt.innerText = v;
         select.appendChild(opt);
     });
+    // Option for custom vendor
+    const customOpt = document.createElement("option");
+    customOpt.value = "__custom__";
+    customOpt.innerText = "➕ Tambah Tenant / Vendor Lain...";
+    customOpt.className = "font-semibold text-indigo-600";
+    select.appendChild(customOpt);
 }
 
 function handleVendorChange() {
-    const vendor = document.getElementById("select-vendor").value;
+    const vendorSelect = document.getElementById("select-vendor");
+    const vendorVal = vendorSelect.value;
+    const customVendorWrapper = document.getElementById("custom-vendor-wrapper");
+    const customVendorInput = document.getElementById("input-custom-vendor");
     const menuSelect = document.getElementById("select-menu");
+    const customMenuWrapper = document.getElementById("custom-menu-wrapper");
+    const customVariantWrapper = document.getElementById("custom-variant-wrapper");
+    const variantContainer = document.getElementById("variant-options");
+
     menuSelect.innerHTML = '<option value="">-- Pilih Menu --</option>';
-    document.getElementById("variant-options").innerHTML = "";
+    variantContainer.innerHTML = "";
     document.getElementById("price-display").innerText = "Rp 0";
 
-    const items = MENU_CATALOG[vendor] || [
-        { name: `${vendor} Standar`, variants: ["Biasa", "Spesial"], price: 15000 }
+    if (vendorVal === "__custom__") {
+        customVendorWrapper.classList.remove("hidden");
+        customVendorInput.focus();
+        
+        // Auto setup custom menu
+        const opt = document.createElement("option");
+        opt.value = "__custom__";
+        opt.innerText = "➕ Ketik Menu Kustom...";
+        opt.selected = true;
+        menuSelect.appendChild(opt);
+
+        handleMenuChange();
+        return;
+    } else {
+        customVendorWrapper.classList.add("hidden");
+        customMenuWrapper.classList.add("hidden");
+        customVariantWrapper.classList.add("hidden");
+    }
+
+    if (!vendorVal) return;
+
+    const items = MENU_CATALOG[vendorVal] || [
+        { name: `${vendorVal} Standar`, variants: ["Biasa", "Spesial"], price: 15000 }
     ];
 
     items.forEach(item => {
@@ -89,18 +123,46 @@ function handleVendorChange() {
         opt.dataset.itemData = JSON.stringify(item);
         menuSelect.appendChild(opt);
     });
+
+    // Option for custom menu under existing vendor
+    const customMenuOpt = document.createElement("option");
+    customMenuOpt.value = "__custom__";
+    customMenuOpt.innerText = "➕ Menu Lainnya (Ketik Manual)...";
+    customMenuOpt.className = "font-semibold text-indigo-600";
+    menuSelect.appendChild(customMenuOpt);
 }
 
 function handleMenuChange() {
     const menuSelect = document.getElementById("select-menu");
     const selectedOption = menuSelect.options[menuSelect.selectedIndex];
     const container = document.getElementById("variant-options");
+    const customMenuWrapper = document.getElementById("custom-menu-wrapper");
+    const customVariantWrapper = document.getElementById("custom-variant-wrapper");
     container.innerHTML = "";
 
-    if (!selectedOption || !selectedOption.dataset.itemData) return;
+    if (!selectedOption || !selectedOption.value) {
+        customMenuWrapper.classList.add("hidden");
+        customVariantWrapper.classList.add("hidden");
+        document.getElementById("price-display").innerText = "Rp 0";
+        return;
+    }
 
-    const item = JSON.parse(selectedOption.dataset.itemData);
-    document.getElementById("price-display").innerText = `Rp ${item.price.toLocaleString("id-ID")}`;
+    if (selectedOption.value === "__custom__") {
+        customMenuWrapper.classList.remove("hidden");
+        customVariantWrapper.classList.remove("hidden");
+        document.getElementById("input-custom-menu").focus();
+
+        const customPriceInput = document.getElementById("input-custom-price");
+        const priceVal = parseInt(customPriceInput.value, 10) || 0;
+        document.getElementById("price-display").innerText = `Rp ${priceVal.toLocaleString("id-ID")}`;
+        return;
+    }
+
+    customMenuWrapper.classList.add("hidden");
+    customVariantWrapper.classList.add("hidden");
+
+    const item = JSON.parse(selectedOption.dataset.itemData || "{}");
+    document.getElementById("price-display").innerText = `Rp ${(item.price || 0).toLocaleString("id-ID")}`;
 
     if (item.variants && item.variants.length > 0) {
         item.variants.forEach((v, idx) => {
@@ -113,72 +175,25 @@ function handleMenuChange() {
             container.appendChild(label);
         });
     }
-}
 
-async function loadOrders() {
-    if (!currentSession) return;
-    try {
-        const resp = await fetch(`/api/v1/sessions/${currentSession.id}/orders`);
-        const orders = await resp.json();
-        renderOrdersList(orders);
-    } catch (err) {
-        console.error("Gagal memuat pesanan:", err);
-    }
-}
+    // Always add an option for Custom Variant
+    const customVarLabel = document.createElement("label");
+    customVarLabel.className = "flex items-center gap-2 p-2 rounded-lg border border-indigo-200 bg-indigo-50/30 hover:bg-indigo-50/60 cursor-pointer text-xs col-span-2";
+    customVarLabel.innerHTML = `
+        <input type="radio" name="order-variant" value="__custom__" class="text-indigo-600 focus:ring-indigo-500">
+        <span class="font-semibold text-indigo-700">➕ Varian Kustom Lainnya</span>
+    `;
+    container.appendChild(customVarLabel);
 
-function renderOrdersList(orders) {
-    const list = document.getElementById("orders-list");
-    const countBadge = document.getElementById("orders-count-badge");
-    countBadge.innerText = `${orders.length} Pesanan`;
-
-    if (!orders || orders.length === 0) {
-        list.innerHTML = `
-            <div class="text-center py-10 text-slate-400 text-xs">
-                Belum ada pesanan masuk. Jadilah yang pertama memesan! 🍜
-            </div>
-        `;
-        return;
-    }
-
-    list.innerHTML = "";
-    orders.forEach((o, index) => {
-        const item = document.createElement("div");
-        item.className = "order-card p-3 rounded-xl border border-slate-100 bg-slate-50 flex items-center justify-between gap-3 text-xs";
-        
-        const statusBadge = o.is_paid 
-            ? '<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold text-[10px]">✅ Lunas</span>'
-            : '<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold text-[10px]">⏳ Belum Bayar</span>';
-
-        const variantBadge = o.variant 
-            ? `<span class="bg-indigo-100 text-indigo-700 font-medium px-1.5 py-0.5 rounded text-[10px]">${o.variant}</span>` 
-            : "";
-
-        const notesText = o.notes ? `<p class="text-[11px] text-slate-500 mt-0.5 italic">"${o.notes}"</p>` : "";
-
-        item.innerHTML = `
-            <div class="flex items-start gap-2.5">
-                <span class="w-5 h-5 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-[10px] flex-shrink-0 mt-0.5">
-                    ${index + 1}
-                </span>
-                <div>
-                    <p class="font-bold text-slate-800 text-xs">${o.user_name} <span class="font-normal text-slate-500">• ${o.vendor}</span></p>
-                    <p class="text-slate-700 font-medium">${o.item_name} ${variantBadge}</p>
-                    ${notesText}
-                </div>
-            </div>
-            <div class="text-right flex-shrink-0">
-                <p class="font-semibold text-slate-900 text-xs">Rp ${o.price.toLocaleString("id-ID")}</p>
-                <div class="mt-1">${statusBadge}</div>
-            </div>
-        `;
-        list.appendChild(item);
-    });
-}
-
-function setupQuickNames() {
-    document.querySelectorAll(".name-tag").forEach(btn => {
-        btn.addEventListener("click", () => {
-            document.getElementById("input-username").value = btn.innerText;
+    // Event listener for variant radios
+    document.querySelectorAll('input[name="order-variant"]').forEach(radio => {
+        radio.addEventListener("change", () => {
+            if (radio.value === "__custom__") {
+                customVariantWrapper.classList.remove("hidden");
+                document.getElementById("input-custom-variant").focus();
+            } else {
+                customVariantWrapper.classList.add("hidden");
+            }
         });
     });
 }
@@ -186,6 +201,14 @@ function setupQuickNames() {
 function setupEventListeners() {
     document.getElementById("select-vendor").addEventListener("change", handleVendorChange);
     document.getElementById("select-menu").addEventListener("change", handleMenuChange);
+
+    const customPriceInput = document.getElementById("input-custom-price");
+    if (customPriceInput) {
+        customPriceInput.addEventListener("input", (e) => {
+            const val = parseInt(e.target.value, 10) || 0;
+            document.getElementById("price-display").innerText = `Rp ${val.toLocaleString("id-ID")}`;
+        });
+    }
 
     document.getElementById("order-form").addEventListener("submit", async (e) => {
         e.preventDefault();
@@ -195,18 +218,54 @@ function setupEventListeners() {
         }
 
         const username = document.getElementById("input-username").value.trim();
-        const vendor = document.getElementById("select-vendor").value;
-        const menuSelect = document.getElementById("select-menu");
-        const itemName = menuSelect.value;
-        const selectedVariantRadio = document.querySelector('input[name="order-variant"]:checked');
-        const variant = selectedVariantRadio ? selectedVariantRadio.value : "";
-        const notes = document.getElementById("input-notes").value.trim();
+        if (!username) {
+            alert("Harap masukkan nama Anda!");
+            document.getElementById("input-username").focus();
+            return;
+        }
 
+        let vendor = document.getElementById("select-vendor").value;
+        if (vendor === "__custom__") {
+            vendor = document.getElementById("input-custom-vendor").value.trim();
+            if (!vendor) {
+                alert("Harap isi nama tenant / vendor baru!");
+                document.getElementById("input-custom-vendor").focus();
+                return;
+            }
+        } else if (!vendor) {
+            alert("Harap pilih vendor!");
+            return;
+        }
+
+        const menuSelect = document.getElementById("select-menu");
+        let itemName = menuSelect.value;
         let price = 0;
-        if (menuSelect.selectedIndex > 0) {
+
+        if (itemName === "__custom__") {
+            itemName = document.getElementById("input-custom-menu").value.trim();
+            if (!itemName) {
+                alert("Harap isi nama menu makanan!");
+                document.getElementById("input-custom-menu").focus();
+                return;
+            }
+            price = parseInt(document.getElementById("input-custom-price").value, 10) || 0;
+        } else if (menuSelect.selectedIndex > 0) {
             const data = JSON.parse(menuSelect.options[menuSelect.selectedIndex].dataset.itemData || "{}");
             price = data.price || 0;
+        } else {
+            alert("Harap pilih menu makanan!");
+            return;
         }
+
+        const selectedVariantRadio = document.querySelector('input[name="order-variant"]:checked');
+        let variant = selectedVariantRadio ? selectedVariantRadio.value : "";
+        if (variant === "__custom__") {
+            variant = document.getElementById("input-custom-variant").value.trim();
+        } else if (!selectedVariantRadio && !document.getElementById("custom-variant-wrapper").classList.contains("hidden")) {
+            variant = document.getElementById("input-custom-variant").value.trim();
+        }
+
+        const notes = document.getElementById("input-notes").value.trim();
 
         const submitBtn = document.getElementById("btn-submit-order");
         submitBtn.disabled = true;
@@ -233,6 +292,11 @@ function setupEventListeners() {
             }
 
             document.getElementById("input-notes").value = "";
+            document.getElementById("input-custom-vendor").value = "";
+            document.getElementById("input-custom-menu").value = "";
+            document.getElementById("input-custom-price").value = "";
+            document.getElementById("input-custom-variant").value = "";
+            
             await loadOrders();
             alert("✅ Pesanan berhasil disimpan! Tidak ada list yang tertimpa.");
         } catch (err) {

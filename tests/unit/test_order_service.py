@@ -141,3 +141,41 @@ async def test_delete_order(db_session):
     orders = await order_service.get_orders_by_session(session.id)
     assert len(orders) == 0
 
+@pytest.mark.asyncio
+async def test_custom_tenant_and_variant_order(db_session):
+    session_service = SessionService(db_session)
+    order_service = OrderService(db_session)
+
+    session = await session_service.create_session(
+        SessionCreate(
+            title="Titip Makan Fleksibel",
+            coordinator_name="Zi",
+            vendor_options=["Mie Ayam", "Babun"],
+            cutoff_minutes=60
+        )
+    )
+
+    # Order with custom tenant not in vendor_options, and custom variant
+    order = await order_service.create_order(
+        session.id,
+        OrderCreate(
+            user_name="Mufid",
+            vendor="Sate Khas Senayan",  # Custom vendor
+            item_name="Sate Kambing Campur",  # Custom item
+            variant="Bumbu Kacang + Lontong",  # Custom variant
+            notes="bawang goreng banyakin",
+            price=45000
+        )
+    )
+
+    assert order.vendor == "Sate Khas Senayan"
+    assert order.variant == "Bumbu Kacang + Lontong"
+
+    summary = await order_service.get_session_summary(session.id)
+    assert summary.total_orders == 1
+    assert summary.total_amount == 45000
+    assert any(i.vendor == "Sate Khas Senayan" and i.variant == "Bumbu Kacang + Lontong" for i in summary.aggregated_items)
+    assert "Sate Khas Senayan" in summary.whatsapp_recap_text
+    assert "Bumbu Kacang + Lontong" in summary.whatsapp_recap_text
+
+
