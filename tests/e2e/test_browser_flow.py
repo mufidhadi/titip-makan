@@ -71,8 +71,16 @@ async def test_full_browser_e2e_journey():
         await page.click('button.name-tag:has-text("Amal")')
         assert await page.input_value("#input-username") == "Amal"
 
-        # Step 3: Type tenant and menu (NO VARIANT FIELD!)
+        # Step 3: Type tenant and menu (NO VARIANT FIELD!) and verify auto-fill
         assert not await page.locator("#input-variant").is_visible()
+
+        # Test catalog auto-complete & price auto-fill
+        await page.fill("#input-menu", "Babun Nasi Telor Dobel")
+        await page.dispatch_event("#input-menu", "input")
+        assert await page.input_value("#input-price") == "13000"
+        assert await page.input_value("#input-tenant") == "Babun"
+
+        # Now fill for actual Amal order
         await page.fill("#input-tenant", "Mie Ayam")
         await page.fill("#input-menu", "Mie Ayam Bakso")
         await page.fill("#input-notes", "jangan pakai sawi")

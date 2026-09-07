@@ -1,7 +1,7 @@
 let currentSession = null;
 let pollTimer = null;
 let countdownInterval = null;
-let suggestionsData = { tenants: [], menus: {} };
+let suggestionsData = { tenants: [], menus: {}, prices: {} };
 let lastSavedOrder = null;
 
 async function initApp() {
@@ -129,28 +129,60 @@ function renderTenantDatalist(tenants) {
     });
 }
 
+function formatRupiahLabel(amount) {
+    if (!amount) return "";
+    return "Rp " + amount.toLocaleString("id-ID");
+}
+
 function updateMenuDatalist() {
     const selectedTenant = document.getElementById("input-tenant").value.trim();
     const menuDatalist = document.getElementById("datalist-menus");
     if (!menuDatalist) return;
     menuDatalist.innerHTML = "";
 
+    const addOption = (m) => {
+        const opt = document.createElement("option");
+        opt.value = m;
+        if (suggestionsData.prices && suggestionsData.prices[m]) {
+            opt.label = formatRupiahLabel(suggestionsData.prices[m]);
+        }
+        menuDatalist.appendChild(opt);
+    };
+
     if (selectedTenant && suggestionsData.menus && suggestionsData.menus[selectedTenant]) {
-        suggestionsData.menus[selectedTenant].forEach(m => {
-            const opt = document.createElement("option");
-            opt.value = m;
-            menuDatalist.appendChild(opt);
-        });
+        suggestionsData.menus[selectedTenant].forEach(m => addOption(m));
     } else {
         const allMenus = new Set();
         Object.values(suggestionsData.menus || {}).forEach(arr => {
             arr.forEach(m => allMenus.add(m));
         });
-        allMenus.forEach(m => {
-            const opt = document.createElement("option");
-            opt.value = m;
-            menuDatalist.appendChild(opt);
-        });
+        Array.from(allMenus).sort().forEach(m => addOption(m));
+    }
+}
+
+function handleMenuInput() {
+    const menuInput = document.getElementById("input-menu");
+    const tenantInput = document.getElementById("input-tenant");
+    const priceInput = document.getElementById("input-price");
+    if (!menuInput) return;
+
+    const val = menuInput.value.trim();
+    if (!val) return;
+
+    // 1. Auto-fill price if known
+    if (priceInput && suggestionsData.prices && suggestionsData.prices[val] !== undefined) {
+        priceInput.value = suggestionsData.prices[val];
+    }
+
+    // 2. Auto-fill tenant if empty and menu belongs to a known tenant
+    if (tenantInput && !tenantInput.value.trim() && suggestionsData.menus) {
+        for (const [t, menus] of Object.entries(suggestionsData.menus)) {
+            if (menus.includes(val)) {
+                tenantInput.value = t;
+                updateMenuDatalist();
+                break;
+            }
+        }
     }
 }
 
@@ -434,6 +466,10 @@ function setupFormEventListeners() {
     const tenantInput = document.getElementById("input-tenant");
     tenantInput.addEventListener("input", updateMenuDatalist);
     tenantInput.addEventListener("change", updateMenuDatalist);
+
+    const menuInput = document.getElementById("input-menu");
+    menuInput.addEventListener("input", handleMenuInput);
+    menuInput.addEventListener("change", handleMenuInput);
 
     const form = document.getElementById("order-form");
     form.addEventListener("submit", async (e) => {

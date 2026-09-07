@@ -242,6 +242,30 @@ async def test_get_suggestions_includes_newly_ordered_tenants_and_menus(db_sessi
     assert "Kue Balok Coklat Lumer" in suggestions["menus"]["Kue Balok Kang Ismet"]
 
 @pytest.mark.asyncio
+async def test_get_suggestions_includes_master_catalog_with_prices(db_session):
+    order_service = OrderService(db_session)
+    suggestions = await order_service.get_suggestions(None)
+    
+    # Verify tenants
+    assert "Babun" in suggestions["tenants"]
+    assert "Mie Ayam" in suggestions["tenants"]
+    assert "Buah Potong" in suggestions["tenants"]
+    
+    # Verify menus
+    assert "Babun Nasi Telor Dobel" in suggestions["menus"]["Babun"]
+    assert "Babun Nasi Ayam Kremes" in suggestions["menus"]["Babun"]
+    assert "Mie Ayam Pangsit Rebus" in suggestions["menus"]["Mie Ayam"]
+    assert "Buah Potong Semangka" in suggestions["menus"]["Buah Potong"]
+    
+    # Verify prices mapping
+    assert "prices" in suggestions
+    assert suggestions["prices"]["Babun Nasi Telor Dobel"] == 13000
+    assert suggestions["prices"]["Babun Nasi Ayam Kremes"] == 22000
+    assert suggestions["prices"]["Mie Ayam Pangsit Rebus"] == 15000
+    assert suggestions["prices"]["Buah Potong Semangka"] == 5000
+
+
+@pytest.mark.asyncio
 async def test_order_without_variant_and_clean_aggregation(db_session):
     session_service = SessionService(db_session)
     order_service = OrderService(db_session)

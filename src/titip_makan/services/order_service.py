@@ -72,13 +72,17 @@ class OrderService:
 
     async def get_suggestions(self, session_id: Optional[int] = None) -> Dict:
         import json
-        tenants_set = set(["Mie Ayam", "Babun", "Nasi Goreng", "Dimsum"])
-        menus_dict = defaultdict(set)
+        from titip_makan.core.catalog import MASTER_CATALOG
 
-        menus_dict["Mie Ayam"].update(["Mie Ayam", "Mie Ayam Bakso"])
-        menus_dict["Babun"].update(["Babun Nasi Ayam", "Babun Nasi Telor"])
-        menus_dict["Nasi Goreng"].update(["Nasi Goreng Ayam", "Nasi Goreng Telor"])
-        menus_dict["Dimsum"].update(["Dimsum Ori isi 5", "Dimsum Mentai"])
+        tenants_set = set(MASTER_CATALOG.keys())
+        menus_dict = defaultdict(set)
+        prices_dict = {}
+
+        # Seed from master catalog
+        for vendor, items in MASTER_CATALOG.items():
+            for item, price in items.items():
+                menus_dict[vendor].add(item)
+                prices_dict[item] = price
 
         if session_id:
             session = await self.session_repo.get_by_id(session_id)
@@ -99,7 +103,8 @@ class OrderService:
 
         return {
             "tenants": sorted(list(tenants_set)),
-            "menus": {k: sorted(list(v)) for k, v in menus_dict.items()}
+            "menus": {k: sorted(list(v)) for k, v in menus_dict.items()},
+            "prices": prices_dict
         }
 
     async def delete_order(self, order_id: int) -> bool:
