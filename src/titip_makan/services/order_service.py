@@ -62,8 +62,60 @@ class OrderService:
             raise ValueError(f"Order with ID {order_id} not found")
         return self._to_schema(order)
 
+    async def update_order_price(self, order_id: int, price: int) -> OrderOut:
+        if price < 0:
+            raise ValueError("Price cannot be negative")
+        order = await self.order_repo.update_price(order_id, price)
+        if not order:
+            raise ValueError(f"Order with ID {order_id} not found")
+        return self._to_schema(order)
+
+    async def get_suggestions(self, session_id: Optional[int] = None) -> Dict:
+        import json
+        tenants_set = set(["Mie Ayam", "Babun", "Nasi Goreng", "Dimsum"])
+        menus_dict = defaultdict(set)
+        variants_dict = defaultdict(set)
+
+        menus_dict["Mie Ayam"].update(["Mie Ayam", "Mie Ayam Bakso"])
+        variants_dict["Mie Ayam"].update(["Pangsit Rebus", "Pangsit Goreng", "Polos"])
+
+        menus_dict["Babun"].update(["Babun Nasi Ayam", "Babun Nasi Telor"])
+        variants_dict["Babun"].update(["Lada Hitam", "Kremes", "Daging Suwir", "Telor Dobel"])
+
+        menus_dict["Nasi Goreng"].update(["Nasi Goreng Ayam", "Nasi Goreng Telor"])
+        variants_dict["Nasi Goreng"].update(["Pedas Sedang", "Pedas Banget", "Tidak Pedas"])
+
+        menus_dict["Dimsum"].update(["Dimsum Ori isi 5", "Dimsum Mentai"])
+        variants_dict["Dimsum"].update(["Ori", "Mentai", "Frozen 1 Pack"])
+
+        if session_id:
+            session = await self.session_repo.get_by_id(session_id)
+            if session and session.vendor_options:
+                try:
+                    opts = json.loads(session.vendor_options)
+                except Exception:
+                    opts = [v.strip() for v in session.vendor_options.split(",") if v.strip()]
+                for opt in opts:
+                    tenants_set.add(opt)
+
+        distinct_items = await self.order_repo.get_distinct_items()
+        for vendor, item_name, variant in distinct_items:
+            if vendor:
+                tenants_set.add(vendor)
+                if item_name:
+                    menus_dict[vendor].add(item_name)
+                if variant:
+                    variants_dict[vendor].add(variant)
+
+        return {
+            "tenants": sorted(list(tenants_set)),
+            "menus": {k: sorted(list(v)) for k, v in menus_dict.items()},
+            "variants": {k: sorted(list(v)) for k, v in variants_dict.items()}
+        }
+
     async def delete_order(self, order_id: int) -> bool:
         return await self.order_repo.delete(order_id)
+
 
     async def get_session_summary(self, session_id: int) -> SessionSummary:
         session = await self.session_repo.get_by_id(session_id)

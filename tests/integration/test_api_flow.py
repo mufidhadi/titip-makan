@@ -84,3 +84,53 @@ async def test_full_titip_makan_api_lifecycle(db_session):
         assert resp.status_code == 400
 
     app.dependency_overrides.clear()
+
+@pytest.mark.asyncio
+async def test_order_price_update_and_suggestions_api(db_session):
+    async def override_get_db():
+        yield db_session
+
+    app.dependency_overrides[get_db] = override_get_db
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        # Create session with coordinator_phone
+        create_resp = await client.post("/api/v1/sessions", json={
+            "title": "Titip Makan Siang",
+            "coordinator_name": "Zi",
+            "coordinator_phone": "6281234567890",
+            "vendor_options": ["Mie Ayam"]
+        })
+        assert create_resp.status_code == 201
+        session_id = create_resp.json()["id"]
+        assert create_resp.json()["coordinator_phone"] == "6281234567890"
+
+        # Member adds order with price=0 (optional)
+        order_resp = await client.post(f"/api/v1/sessions/{session_id}/orders", json={
+            "user_name": "Amal",
+            "vendor": "Bebek Kaleyo",
+            "item_name": "Bebek Goreng Kremes",
+            "variant": "Sambal Ijo",
+            "price": 0
+        })
+        assert order_resp.status_code == 201
+        order_id = order_resp.json()["id"]
+        assert order_resp.json()["price"] == 0
+
+        # Coordinator updates price via PATCH /orders/{order_id}/price
+        price_resp = await client.patch(
+            f"/api/v1/orders/{order_id}/price",
+            json={"price": 38000}
+        )
+        assert price_resp.status_code == 200
+        assert price_resp.json()["price"] == 38000
+
+        # Verify suggestions endpoint includes Bebek Kaleyo
+        sugg_resp = await client.get(f"/api/v1/sessions/{session_id}/suggestions")
+        assert sugg_resp.status_code == 200
+        data = sugg_resp.json()
+        assert "Bebek Kaleyo" in data["tenants"]
+        assert "Bebek Goreng Kremes" in data["menus"]["Bebek Kaleyo"]
+
+    app.dependency_overrides.clear()
+

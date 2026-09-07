@@ -54,6 +54,18 @@ class OrderRepository:
             await self.db.refresh(order)
         return order
 
+    async def update_price(self, order_id: int, price: int) -> Optional[OrderItem]:
+        order = await self.get_by_id(order_id)
+        if order:
+            order.price = price
+            await self.db.commit()
+            await self.db.refresh(order)
+        return order
+
+    async def get_distinct_items(self) -> List[OrderItem]:
+        result = await self.db.execute(select(OrderItem.vendor, OrderItem.item_name, OrderItem.variant).distinct())
+        return list(result.all())
+
     async def delete(self, order_id: int) -> bool:
         order = await self.get_by_id(order_id)
         if order:
@@ -61,3 +73,4 @@ class OrderRepository:
             await self.db.commit()
             return True
         return False
+

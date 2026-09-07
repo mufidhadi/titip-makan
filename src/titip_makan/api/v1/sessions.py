@@ -25,6 +25,16 @@ async def get_latest_session(db: AsyncSession = Depends(get_db)):
     service = SessionService(db)
     return await service.get_latest_session()
 
+@router.get("/suggestions")
+async def get_general_suggestions(db: AsyncSession = Depends(get_db)):
+    service = OrderService(db)
+    return await service.get_suggestions(None)
+
+@router.get("/{session_id}/suggestions")
+async def get_session_suggestions(session_id: int, db: AsyncSession = Depends(get_db)):
+    service = OrderService(db)
+    return await service.get_suggestions(session_id)
+
 @router.get("/{session_id}", response_model=SessionOut)
 async def get_session(session_id: int, db: AsyncSession = Depends(get_db)):
     service = SessionService(db)

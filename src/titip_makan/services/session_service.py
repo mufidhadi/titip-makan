@@ -20,6 +20,7 @@ class SessionService:
             id=session.id,
             title=session.title,
             coordinator_name=session.coordinator_name,
+            coordinator_phone=getattr(session, "coordinator_phone", None),
             vendor_options=vendors,
             payment_info=session.payment_info,
             status=session.status,
@@ -38,7 +39,8 @@ class SessionService:
             coordinator_name=data.coordinator_name,
             vendor_options=data.vendor_options,
             payment_info=data.payment_info,
-            cutoff_at=cutoff_at
+            cutoff_at=cutoff_at,
+            coordinator_phone=data.coordinator_phone
         )
         return self._to_schema(session)
 

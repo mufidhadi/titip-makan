@@ -9,6 +9,7 @@ class PoolSession(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     title = Column(String(255), nullable=False)
     coordinator_name = Column(String(100), nullable=False, default="Zi")
+    coordinator_phone = Column(String(50), nullable=True)
     vendor_options = Column(Text, nullable=False, default="[]")  # JSON string of vendor list
     payment_info = Column(Text, nullable=True)
     status = Column(String(20), nullable=False, default="OPEN")  # OPEN, CLOSED

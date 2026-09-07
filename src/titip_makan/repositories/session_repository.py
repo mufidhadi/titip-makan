@@ -15,7 +15,8 @@ class SessionRepository:
         coordinator_name: str,
         vendor_options: List[str],
         payment_info: Optional[str] = None,
-        cutoff_at: Optional[datetime] = None
+        cutoff_at: Optional[datetime] = None,
+        coordinator_phone: Optional[str] = None
     ) -> PoolSession:
         # Auto-close any previous open sessions
         await self.db.execute(
@@ -27,6 +28,7 @@ class SessionRepository:
         session = PoolSession(
             title=title,
             coordinator_name=coordinator_name,
+            coordinator_phone=coordinator_phone,
             vendor_options=json.dumps(vendor_options),
             payment_info=payment_info,
             status="OPEN",

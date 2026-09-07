@@ -38,6 +38,9 @@ class OrderOut(BaseModel):
 class OrderPaymentUpdate(BaseModel):
     is_paid: bool
 
+class OrderPriceUpdate(BaseModel):
+    price: int = Field(..., ge=0, description="Harga yang diisi/diperbarui oleh koordinator")
+
 class AggregatedItem(BaseModel):
     vendor: str
     item_name: str

@@ -178,4 +178,69 @@ async def test_custom_tenant_and_variant_order(db_session):
     assert "Sate Khas Senayan" in summary.whatsapp_recap_text
     assert "Bumbu Kacang + Lontong" in summary.whatsapp_recap_text
 
+@pytest.mark.asyncio
+async def test_optional_order_price_and_coordinator_update(db_session):
+    session_service = SessionService(db_session)
+    order_service = OrderService(db_session)
+
+    session = await session_service.create_session(
+        SessionCreate(
+            title="Titip Makan Santai",
+            coordinator_name="Zi",
+            vendor_options=["Mie Ayam"],
+            cutoff_minutes=60
+        )
+    )
+
+    # Member orders without specifying price (default 0)
+    order = await order_service.create_order(
+        session.id,
+        OrderCreate(
+            user_name="Amal",
+            vendor="Mie Ayam",
+            item_name="Mie Ayam Spesial",
+            price=0
+        )
+    )
+    assert order.price == 0
+
+    # Coordinator fills/updates the price
+    updated = await order_service.update_order_price(order.id, 18000)
+    assert updated.price == 18000
+
+    summary = await order_service.get_session_summary(session.id)
+    assert summary.total_amount == 18000
+
+@pytest.mark.asyncio
+async def test_get_suggestions_includes_newly_ordered_tenants_and_menus(db_session):
+    session_service = SessionService(db_session)
+    order_service = OrderService(db_session)
+
+    session = await session_service.create_session(
+        SessionCreate(
+            title="Titip Makan Fleksibel",
+            coordinator_name="Zi",
+            vendor_options=["Mie Ayam"],
+            cutoff_minutes=60
+        )
+    )
+
+    # Order from brand new tenant
+    await order_service.create_order(
+        session.id,
+        OrderCreate(
+            user_name="Adrian",
+            vendor="Kue Balok Kang Ismet",
+            item_name="Kue Balok Coklat Lumer",
+            variant="Setengah Matang",
+            price=25000
+        )
+    )
+
+    suggestions = await order_service.get_suggestions(session.id)
+    assert "Kue Balok Kang Ismet" in suggestions["tenants"]
+    assert "Kue Balok Coklat Lumer" in suggestions["menus"]["Kue Balok Kang Ismet"]
+    assert "Setengah Matang" in suggestions["variants"]["Kue Balok Kang Ismet"]
+
+
 

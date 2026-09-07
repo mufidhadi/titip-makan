@@ -144,6 +144,12 @@ function renderOrdersTable(orders) {
             ? `<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold text-[10px]">✅ Lunas</span>`
             : `<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold text-[10px]">⏳ Belum</span>`;
 
+        const priceCell = o.price > 0
+            ? `<span class="font-semibold text-slate-800">Rp ${o.price.toLocaleString("id-ID")}</span>
+               <button onclick="window.promptEditPrice(${o.id}, ${o.price}, '${escapeJs(o.item_name)}')" class="text-slate-400 hover:text-indigo-600 ml-1 text-[10px]" title="Ubah harga">✏️</button>`
+            : `<span class="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 text-[10px] font-bold border border-amber-200">Belum di-set</span>
+               <button onclick="window.promptEditPrice(${o.id}, 0, '${escapeJs(o.item_name)}')" class="text-indigo-600 hover:text-indigo-800 text-[11px] font-bold underline ml-1">✏️ Set</button>`;
+
         tr.innerHTML = `
             <td class="py-2.5 px-3 font-semibold text-slate-500">${idx + 1}</td>
             <td class="py-2.5 px-3 font-bold text-slate-800">${o.user_name}</td>
@@ -152,14 +158,14 @@ function renderOrdersTable(orders) {
                 ${o.variant ? `<span class="font-medium text-indigo-600">${o.variant}</span>` : '-'}
                 ${o.notes ? `<span class="block text-[11px] text-slate-400 italic">Note: ${o.notes}</span>` : ''}
             </td>
-            <td class="py-2.5 px-3 font-semibold text-slate-800">Rp ${o.price.toLocaleString("id-ID")}</td>
+            <td class="py-2.5 px-3">${priceCell}</td>
             <td class="py-2.5 px-3">${paymentBadge}</td>
             <td class="py-2.5 px-3 text-right space-x-1">
                 <button onclick="window.togglePaymentStatus(${o.id}, ${!o.is_paid})" 
                     class="px-2 py-1 rounded-lg text-[11px] font-semibold border ${o.is_paid ? 'border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100' : 'border-emerald-300 text-emerald-700 bg-emerald-50 hover:bg-emerald-100'} transition">
                     ${o.is_paid ? 'Set Belum' : 'Set Lunas'}
                 </button>
-                <button onclick="window.deleteOrder(${o.id}, '${o.user_name}')" 
+                <button onclick="window.deleteOrder(${o.id}, '${escapeJs(o.user_name)}')" 
                     class="px-2 py-1 rounded-lg text-[11px] font-semibold border border-rose-200 text-rose-600 bg-rose-50 hover:bg-rose-100 transition">
                     🗑️
                 </button>
@@ -168,6 +174,37 @@ function renderOrdersTable(orders) {
         tbody.appendChild(tr);
     });
 }
+
+function escapeJs(str) {
+    if (!str) return "";
+    return str.replace(/'/g, "\\'");
+}
+
+window.promptEditPrice = async function(orderId, currentPrice, itemName) {
+    const promptVal = prompt(`Masukkan harga untuk "${itemName}":`, currentPrice > 0 ? currentPrice : "");
+    if (promptVal === null) return;
+    const price = parseInt(promptVal.trim(), 10);
+    if (isNaN(price) || price < 0) {
+        showToast("Harga harus berupa nominal angka valid!", "warning");
+        return;
+    }
+
+    try {
+        const resp = await fetch(`/api/v1/orders/${orderId}/price`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ price: price })
+        });
+        if (resp.ok) {
+            await loadSummary();
+            showToast("Harga pesanan berhasil diperbarui!", "success");
+        } else {
+            showToast("Gagal memperbarui harga.", "error");
+        }
+    } catch (err) {
+        showToast("Terjadi kesalahan jaringan.", "error");
+    }
+};
 
 window.togglePaymentStatus = async function(orderId, newStatus) {
     try {
@@ -226,6 +263,8 @@ function setupEventListeners() {
         const vendorsStr = document.getElementById("cs-vendors").value.trim();
         const cutoff = parseInt(document.getElementById("cs-cutoff").value, 10);
         const payment = document.getElementById("cs-payment").value.trim();
+        const phoneInput = document.getElementById("cs-phone");
+        const phone = phoneInput ? phoneInput.value.trim() : "";
 
         const vendors = vendorsStr.split(",").map(v => v.trim()).filter(Boolean);
 
@@ -236,6 +275,7 @@ function setupEventListeners() {
                 body: JSON.stringify({
                     title: title,
                     coordinator_name: coordinator,
+                    coordinator_phone: phone,
                     vendor_options: vendors,
                     cutoff_minutes: cutoff,
                     payment_info: payment
