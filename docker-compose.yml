@@ -22,6 +22,7 @@ services:
       - web_proxy
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=web_proxy"
       - "traefik.http.routers.titip-irzi.rule=Host(`titip-irzi.masmuf.cloud`)"
       - "traefik.http.routers.titip-irzi.entrypoints=websecure"
       - "traefik.http.routers.titip-irzi.tls.certresolver=myresolver"
