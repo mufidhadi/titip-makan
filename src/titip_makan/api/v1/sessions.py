@@ -25,6 +25,11 @@ async def get_latest_session(db: AsyncSession = Depends(get_db)):
     service = SessionService(db)
     return await service.get_latest_session()
 
+@router.get("/history", response_model=List[SessionOut])
+async def get_sessions_history(db: AsyncSession = Depends(get_db)):
+    service = SessionService(db)
+    return await service.get_history()
+
 @router.get("/suggestions")
 async def get_general_suggestions(db: AsyncSession = Depends(get_db)):
     service = OrderService(db)
@@ -71,11 +76,6 @@ async def update_cutoff(
         return await service.update_cutoff(session_id, extend_minutes=data.extend_minutes, close_now=data.close_now or False)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
-
-@router.get("/history", response_model=List[SessionOut])
-async def get_sessions_history(db: AsyncSession = Depends(get_db)):
-    service = SessionService(db)
-    return await service.get_history()
 
 @router.post("/{session_id}/broadcast")
 async def broadcast_session_announcement(

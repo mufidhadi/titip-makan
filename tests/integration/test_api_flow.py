@@ -140,5 +140,16 @@ async def test_order_price_update_and_suggestions_api(db_session):
         assert "Bebek Kaleyo" in data["tenants"]
         assert "Bebek Goreng Kremes" in data["menus"]["Bebek Kaleyo"]
 
+        # Verify history endpoint returns 200 and includes orders detail
+        hist_resp = await client.get("/api/v1/sessions/history")
+        assert hist_resp.status_code == 200
+        history_list = hist_resp.json()
+        assert len(history_list) >= 1
+        target_hist = next((s for s in history_list if s["id"] == session_id), None)
+        assert target_hist is not None
+        assert len(target_hist["orders"]) == 1
+        assert target_hist["orders"][0]["user_name"] == "Amal"
+        assert target_hist["orders"][0]["vendor"] == "Bebek Kaleyo"
+
     app.dependency_overrides.clear()
 

@@ -18,6 +18,8 @@ class SessionCreate(BaseModel):
     cutoff_minutes: Optional[int] = Field(default=30, description="Cutoff duration in minutes from now")
     cutoff_at: Optional[datetime] = Field(default=None, description="Explicit cutoff datetime")
 
+from titip_makan.schemas.order import OrderOut
+
 class SessionOut(BaseModel):
     id: int
     title: str
@@ -29,6 +31,7 @@ class SessionOut(BaseModel):
     cutoff_at: Optional[datetime] = None
     created_at: datetime
     closed_at: Optional[datetime] = None
+    orders: List[OrderOut] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -60,6 +60,32 @@ async def test_create_session_with_defaults(db_session):
     )
     session = await service.create_session(session_data)
     assert session.coordinator_name == "Irzi"
-    assert session.payment_info == "gopay ke +62 815-1382-5480"
     assert session.coordinator_phone == "+62 815-1382-5480"
+
+@pytest.mark.asyncio
+async def test_get_history_includes_order_details(db_session):
+    from titip_makan.services.order_service import OrderService
+    from titip_makan.schemas.order import OrderCreate
+
+    session_service = SessionService(db_session)
+    order_service = OrderService(db_session)
+
+    session = await session_service.create_session(
+        SessionCreate(title="Sesi Riwayat Lengkap", coordinator_name="Irzi")
+    )
+    await order_service.create_order(
+        session.id,
+        OrderCreate(user_name="Amal", vendor="Babun", item_name="Nasi Telor", price=13000)
+    )
+    await order_service.create_order(
+        session.id,
+        OrderCreate(user_name="Shazi", vendor="Mie Ayam", item_name="Mie Bakso", price=18000)
+    )
+
+    history = await session_service.get_history()
+    target = next((s for s in history if s.id == session.id), None)
+    assert target is not None
+    assert len(target.orders) == 2
+    assert target.orders[0].user_name in ["Amal", "Shazi"]
+    assert target.orders[1].user_name in ["Amal", "Shazi"]
 

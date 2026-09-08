@@ -2,6 +2,7 @@ import json
 from typing import Optional, List
 from datetime import datetime, timezone
 from sqlalchemy import select, update
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from titip_makan.models.session import PoolSession
 
@@ -41,12 +42,18 @@ class SessionRepository:
         return session
 
     async def get_by_id(self, session_id: int) -> Optional[PoolSession]:
-        result = await self.db.execute(select(PoolSession).where(PoolSession.id == session_id))
+        result = await self.db.execute(
+            select(PoolSession)
+            .options(selectinload(PoolSession.orders))
+            .where(PoolSession.id == session_id)
+        )
         return result.scalars().first()
 
     async def get_latest(self) -> Optional[PoolSession]:
         result = await self.db.execute(
-            select(PoolSession).order_by(PoolSession.id.desc())
+            select(PoolSession)
+            .options(selectinload(PoolSession.orders))
+            .order_by(PoolSession.id.desc())
         )
         return result.scalars().first()
 
@@ -77,6 +84,8 @@ class SessionRepository:
 
     async def get_all_history(self) -> List[PoolSession]:
         result = await self.db.execute(
-            select(PoolSession).order_by(PoolSession.created_at.desc())
+            select(PoolSession)
+            .options(selectinload(PoolSession.orders))
+            .order_by(PoolSession.created_at.desc())
         )
         return list(result.scalars().all())

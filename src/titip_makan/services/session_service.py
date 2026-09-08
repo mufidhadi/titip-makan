@@ -27,6 +27,14 @@ class SessionService:
                 return dt.replace(tzinfo=timezone.utc)
             return dt
 
+        orders_out = []
+        from sqlalchemy import inspect as sa_inspect
+        state = sa_inspect(session)
+        loaded_orders = state.dict.get("orders")
+        if loaded_orders:
+            from titip_makan.schemas.order import OrderOut
+            orders_out = [OrderOut.model_validate(o) for o in loaded_orders]
+
         return SessionOut(
             id=session.id,
             title=session.title,
@@ -37,7 +45,8 @@ class SessionService:
             status=session.status,
             cutoff_at=_ensure_utc(session.cutoff_at),
             created_at=_ensure_utc(session.created_at),
-            closed_at=_ensure_utc(session.closed_at)
+            closed_at=_ensure_utc(session.closed_at),
+            orders=orders_out
         )
 
     async def create_session(self, data: SessionCreate) -> SessionOut:
