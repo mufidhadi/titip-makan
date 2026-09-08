@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from titip_makan.repositories.session_repository import SessionRepository
-from titip_makan.schemas.session import SessionCreate, SessionOut
+from titip_makan.schemas.session import SessionCreate, SessionOut, PaginatedSessions
 from titip_makan.models.session import PoolSession
 
 import logging
@@ -148,3 +148,22 @@ class SessionService:
     async def get_history(self) -> List[SessionOut]:
         sessions = await self.repo.get_all_history()
         return [self._to_schema(s) for s in sessions]
+
+    async def get_paginated_history(self, page: int = 1, limit: int = 10) -> PaginatedSessions:
+        if page < 1:
+            page = 1
+        if limit < 1:
+            limit = 10
+        offset = (page - 1) * limit
+        total = await self.repo.count_all_history()
+        sessions = await self.repo.get_paginated_history(limit=limit, offset=offset)
+        items = [self._to_schema(s) for s in sessions]
+        total_pages = (total + limit - 1) // limit if total > 0 else 1
+        return PaginatedSessions(
+            items=items,
+            total=total,
+            page=page,
+            limit=limit,
+            total_pages=total_pages
+        )
+

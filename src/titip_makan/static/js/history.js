@@ -6,6 +6,16 @@ let chartVendorsInstance = null;
 
 async function initHistory() {
     setupPeriodButtons();
+    
+    const pageSizeSelect = document.getElementById("sessions-page-size");
+    if (pageSizeSelect) {
+        pageSizeSelect.addEventListener("change", (e) => {
+            historyPagination.limit = parseInt(e.target.value, 10) || 10;
+            historyPagination.page = 1;
+            loadPastSessions();
+        });
+    }
+
     document.getElementById("btn-refresh-history").addEventListener("click", async () => {
         await loadAnalytics();
         await loadPastSessions();
@@ -250,17 +260,57 @@ function escapeHtml(str) {
         .replace(/'/g, "&#039;");
 }
 
-async function loadPastSessions() {
-    try {
-        const resp = await fetch("/api/v1/sessions/history");
-        if (!resp.ok) return;
-        const sessions = await resp.json();
+let historyPagination = {
+    page: 1,
+    limit: 10,
+    total: 0,
+    totalPages: 1
+};
 
-        const container = document.getElementById("past-sessions-container");
+async function loadPastSessions(targetPage = null) {
+    if (targetPage !== null) {
+        historyPagination.page = targetPage;
+    }
+
+    const container = document.getElementById("past-sessions-container");
+    container.innerHTML = `
+        <div class="flex items-center justify-center py-10 text-slate-400 gap-2 text-xs">
+            <span class="loading loading-spinner loading-sm text-indigo-500"></span> Memuat riwayat sesi...
+        </div>
+    `;
+
+    try {
+        const resp = await fetch(`/api/v1/sessions/history?page=${historyPagination.page}&limit=${historyPagination.limit}`);
+        if (!resp.ok) {
+            container.innerHTML = `<p class="text-xs text-rose-500 text-center py-6">Gagal memuat riwayat sesi.</p>`;
+            return;
+        }
+        const resJson = await resp.json();
+
+        let sessions = [];
+        if (Array.isArray(resJson)) {
+            sessions = resJson;
+            historyPagination.total = resJson.length;
+            historyPagination.totalPages = 1;
+        } else {
+            sessions = resJson.items || [];
+            historyPagination.total = resJson.total || 0;
+            historyPagination.page = resJson.page || 1;
+            historyPagination.limit = resJson.limit || 10;
+            historyPagination.totalPages = resJson.total_pages || 1;
+        }
+
+        // Update badge total
+        const badge = document.getElementById("sessions-total-badge");
+        if (badge) {
+            badge.innerText = `Total: ${historyPagination.total} Sesi`;
+        }
+
         container.innerHTML = "";
 
         if (!sessions || sessions.length === 0) {
-            container.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">Belum ada riwayat sesi yang tercatat.</p>`;
+            container.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">Belum ada riwayat sesi pada halaman ini.</p>`;
+            renderPaginationControls();
             return;
         }
 
@@ -269,7 +319,7 @@ async function loadPastSessions() {
             card.className = "p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-3";
             
             const isClosed = s.status === "CLOSED";
-            const badge = isClosed
+            const statusBadge = isClosed
                 ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-200 text-slate-700">DITUTUP</span>`
                 : `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">AKTIF</span>`;
 
@@ -286,7 +336,7 @@ async function loadPastSessions() {
 
             const ordersRows = orders.length > 0
                 ? orders.map((o, idx) => {
-                    const statusBadge = (o.payment_status === "PAID" || o.is_paid)
+                    const paymentBadge = (o.payment_status === "PAID" || o.is_paid)
                         ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">✅ Lunas</span>`
                         : (o.payment_status === "PENDING_CONFIRMATION")
                             ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700">🟡 Konfirmasi</span>`
@@ -302,7 +352,7 @@ async function loadPastSessions() {
                             </td>
                             <td class="py-2 px-2.5 text-slate-500 italic text-[11px]">${o.notes ? `"${escapeHtml(o.notes)}"` : '-'}</td>
                             <td class="py-2 px-2.5 font-semibold text-slate-800">${priceText}</td>
-                            <td class="py-2 px-2.5 text-right">${statusBadge}</td>
+                            <td class="py-2 px-2.5 text-right">${paymentBadge}</td>
                         </tr>
                     `;
                 }).join("")
@@ -312,7 +362,7 @@ async function loadPastSessions() {
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
                         <div class="flex items-center gap-2 mb-1 flex-wrap">
-                            ${badge}
+                            ${statusBadge}
                             <span class="text-xs font-semibold text-slate-500">Sesi #${s.id}</span>
                             <span class="text-xs text-slate-400">• ${dateStr}</span>
                             <span class="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">${totalOrders} Pesanan</span>
@@ -355,8 +405,114 @@ async function loadPastSessions() {
             `;
             container.appendChild(card);
         });
+
+        renderPaginationControls();
     } catch (err) {
         console.error("Gagal memuat riwayat sesi:", err);
+    }
+}
+
+function renderPaginationControls() {
+    const infoEl = document.getElementById("pagination-info");
+    const buttonsEl = document.getElementById("pagination-buttons");
+    if (!infoEl || !buttonsEl) return;
+
+    const { page, limit, total, totalPages } = historyPagination;
+    
+    if (total === 0) {
+        infoEl.innerText = "Tidak ada sesi.";
+        buttonsEl.innerHTML = "";
+        return;
+    }
+
+    const startItem = (page - 1) * limit + 1;
+    const endItem = Math.min(page * limit, total);
+    infoEl.innerHTML = `Menampilkan <span class="font-bold text-slate-700">${startItem} - ${endItem}</span> dari <span class="font-bold text-slate-700">${total}</span> sesi <span class="text-slate-400 font-normal">(Hal. ${page}/${totalPages})</span>`;
+
+    buttonsEl.innerHTML = "";
+
+    // Prev Button
+    const prevBtn = document.createElement("button");
+    const isPrevDisabled = page <= 1;
+    prevBtn.className = `join-item btn btn-sm px-3 ${isPrevDisabled ? 'btn-disabled bg-slate-50 text-slate-300 border-slate-200' : 'bg-white hover:bg-slate-100 text-slate-700 font-medium border-slate-300'} text-xs border`;
+    prevBtn.innerHTML = "« Prev";
+    if (!isPrevDisabled) {
+        prevBtn.onclick = () => {
+            loadPastSessions(page - 1);
+            scrollToSessions();
+        };
+    }
+    buttonsEl.appendChild(prevBtn);
+
+    // Numbered Buttons (smart window max 5)
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, page - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+    if (endPage - startPage + 1 < maxVisiblePages) {
+        startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+
+    if (startPage > 1) {
+        const firstBtn = document.createElement("button");
+        firstBtn.className = "join-item btn btn-sm min-w-[36px] px-2 bg-white hover:bg-slate-100 text-slate-700 font-medium text-xs border border-slate-300";
+        firstBtn.innerText = "1";
+        firstBtn.onclick = () => { loadPastSessions(1); scrollToSessions(); };
+        buttonsEl.appendChild(firstBtn);
+
+        if (startPage > 2) {
+            const dots = document.createElement("button");
+            dots.className = "join-item btn btn-sm min-w-[32px] px-1 btn-disabled bg-white text-slate-400 text-xs border border-slate-300";
+            dots.innerText = "...";
+            buttonsEl.appendChild(dots);
+        }
+    }
+
+    for (let p = startPage; p <= endPage; p++) {
+        const pageBtn = document.createElement("button");
+        const isActive = p === page;
+        pageBtn.className = `join-item btn btn-sm min-w-[36px] px-2 ${isActive ? 'btn-active bg-indigo-600 hover:bg-indigo-700 border-indigo-600 text-white font-bold' : 'bg-white hover:bg-slate-100 text-slate-700 font-medium border-slate-300'} text-xs border`;
+        pageBtn.innerText = p;
+        if (!isActive) {
+            pageBtn.onclick = () => {
+                loadPastSessions(p);
+                scrollToSessions();
+            };
+        }
+        buttonsEl.appendChild(pageBtn);
+    }
+
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+            const dots = document.createElement("button");
+            dots.className = "join-item btn btn-sm min-w-[32px] px-1 btn-disabled bg-white text-slate-400 text-xs border border-slate-300";
+            dots.innerText = "...";
+            buttonsEl.appendChild(dots);
+        }
+        const lastBtn = document.createElement("button");
+        lastBtn.className = "join-item btn btn-sm min-w-[36px] px-2 bg-white hover:bg-slate-100 text-slate-700 font-medium text-xs border border-slate-300";
+        lastBtn.innerText = totalPages;
+        lastBtn.onclick = () => { loadPastSessions(totalPages); scrollToSessions(); };
+        buttonsEl.appendChild(lastBtn);
+    }
+
+    // Next Button
+    const nextBtn = document.createElement("button");
+    const isNextDisabled = page >= totalPages;
+    nextBtn.className = `join-item btn btn-sm px-3 ${isNextDisabled ? 'btn-disabled bg-slate-50 text-slate-300 border-slate-200' : 'bg-white hover:bg-slate-100 text-slate-700 font-medium border-slate-300'} text-xs border`;
+    nextBtn.innerHTML = "Next »";
+    if (!isNextDisabled) {
+        nextBtn.onclick = () => {
+            loadPastSessions(page + 1);
+            scrollToSessions();
+        };
+    }
+    buttonsEl.appendChild(nextBtn);
+}
+
+function scrollToSessions() {
+    const el = document.getElementById("past-sessions-card");
+    if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
     }
 }
 

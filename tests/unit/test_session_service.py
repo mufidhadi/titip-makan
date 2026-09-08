@@ -89,3 +89,39 @@ async def test_get_history_includes_order_details(db_session):
     assert target.orders[0].user_name in ["Amal", "Shazi"]
     assert target.orders[1].user_name in ["Amal", "Shazi"]
 
+
+@pytest.mark.asyncio
+async def test_get_paginated_history(db_session):
+    session_service = SessionService(db_session)
+
+    # Create 5 distinct sessions
+    created_ids = []
+    for i in range(5):
+        s = await session_service.create_session(
+            SessionCreate(title=f"Sesi Halaman {i+1}", coordinator_name=f"Koord {i+1}")
+        )
+        created_ids.append(s.id)
+
+    # Test page 1 with limit 2
+    p1 = await session_service.get_paginated_history(page=1, limit=2)
+    assert p1.total >= 5
+    assert len(p1.items) == 2
+    assert p1.page == 1
+    assert p1.limit == 2
+    assert p1.total_pages == (p1.total + 2 - 1) // 2
+
+    # Test page 2 with limit 2
+    p2 = await session_service.get_paginated_history(page=2, limit=2)
+    assert len(p2.items) == 2
+    assert p2.page == 2
+    # Ensure items on page 2 are different from page 1
+    p1_ids = [item.id for item in p1.items]
+    p2_ids = [item.id for item in p2.items]
+    assert not set(p1_ids).intersection(set(p2_ids))
+
+    # Test page out of range
+    p_out = await session_service.get_paginated_history(page=999, limit=10)
+    assert len(p_out.items) == 0
+    assert p_out.page == 999
+
+

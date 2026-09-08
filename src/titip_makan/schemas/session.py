@@ -42,3 +42,11 @@ class SessionOut(BaseModel):
 class SessionCutoffUpdate(BaseModel):
     extend_minutes: Optional[int] = Field(default=None, ge=1, le=120, description="Perpanjangan waktu dalam menit")
     close_now: Optional[bool] = Field(default=False, description="Tutup waktu pemesanan seketika")
+
+class PaginatedSessions(BaseModel):
+    items: List[SessionOut] = Field(default_factory=list, description="Daftar sesi untuk halaman aktif")
+    total: int = Field(..., description="Total jumlah seluruh sesi")
+    page: int = Field(..., description="Nomor halaman aktif (1-indexed)")
+    limit: int = Field(..., description="Jumlah item per halaman")
+    total_pages: int = Field(..., description="Total jumlah halaman")
+

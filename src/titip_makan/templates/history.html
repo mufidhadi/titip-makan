@@ -114,13 +114,40 @@
     </div>
 
     <!-- Past Sessions List -->
-    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-        <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
-            <span>📜</span> Riwayat Seluruh Sesi Titip Makan
-        </h3>
+    <div id="past-sessions-card" class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+            <div class="flex items-center gap-2.5">
+                <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                    <span>📜</span> Riwayat Seluruh Sesi Titip Makan
+                </h3>
+                <span id="sessions-total-badge" class="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                    Memuat...
+                </span>
+            </div>
+            <div class="flex items-center gap-2 text-xs text-slate-500 self-end sm:self-auto">
+                <label for="sessions-page-size" class="font-medium">Tampilkan:</label>
+                <select id="sessions-page-size" class="select select-xs select-bordered font-semibold text-slate-700 rounded-lg">
+                    <option value="5">5 sesi</option>
+                    <option value="10" selected>10 sesi</option>
+                    <option value="20">20 sesi</option>
+                    <option value="50">50 sesi</option>
+                </select>
+            </div>
+        </div>
+
         <div id="past-sessions-container" class="space-y-2.5">
             <!-- Rendered by history.js -->
             <p class="text-xs text-slate-400 text-center py-6">Memuat riwayat sesi...</p>
+        </div>
+
+        <!-- Pagination Controls -->
+        <div id="sessions-pagination-container" class="pt-3 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-100 text-xs">
+            <div id="pagination-info" class="text-slate-500 font-medium text-center sm:text-left">
+                <!-- Info updated by history.js -->
+            </div>
+            <div id="pagination-buttons" class="join">
+                <!-- Buttons rendered by history.js -->
+            </div>
         </div>
     </div>
 </div>

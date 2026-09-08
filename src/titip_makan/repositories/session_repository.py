@@ -1,7 +1,7 @@
 import json
 from typing import Optional, List
 from datetime import datetime, timezone
-from sqlalchemy import select, update
+from sqlalchemy import select, update, func
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from titip_makan.models.session import PoolSession
@@ -89,3 +89,20 @@ class SessionRepository:
             .order_by(PoolSession.created_at.desc())
         )
         return list(result.scalars().all())
+
+    async def count_all_history(self) -> int:
+        result = await self.db.execute(
+            select(func.count(PoolSession.id))
+        )
+        return result.scalar() or 0
+
+    async def get_paginated_history(self, limit: int, offset: int) -> List[PoolSession]:
+        result = await self.db.execute(
+            select(PoolSession)
+            .options(selectinload(PoolSession.orders))
+            .order_by(PoolSession.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        return list(result.scalars().all())
+
