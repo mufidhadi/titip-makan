@@ -309,6 +309,45 @@ function setupEventListeners() {
         showToast("Link order disalin: " + url, "info");
     });
 
+    // Broadcast WA announcement to MTN CORE group
+    const broadcastBtn = document.getElementById("btn-broadcast-wa");
+    if (broadcastBtn) {
+        broadcastBtn.addEventListener("click", async () => {
+            if (!activeSessionId) {
+                showToast("Tidak ada sesi aktif.", "warning");
+                return;
+            }
+            const confirmBroadcast = confirm("Kirim ulang pengumuman sesi ke Grup WhatsApp MTN CORE?");
+            if (!confirmBroadcast) return;
+
+            const pin = prompt("Masukkan PIN Koordinator:", "1234");
+            if (!pin) return;
+
+            broadcastBtn.disabled = true;
+            broadcastBtn.innerText = "Mengirim...";
+
+            try {
+                const resp = await fetch(`/api/v1/sessions/${activeSessionId}/broadcast`, {
+                    method: "POST",
+                    headers: { "X-Coordinator-Pin": pin }
+                });
+                const data = await resp.json();
+                if (resp.ok && data.status === "success") {
+                    showToast("Pengumuman berhasil dikirim ke Grup MTN CORE!", "success");
+                } else if (data.status === "skipped") {
+                    showToast("Notifikasi WA dilewati (" + (data.reason || "dimatikan") + ").", "info");
+                } else {
+                    showToast("Gagal mengirim WA: " + (data.error || "Terjadi kesalahan"), "error");
+                }
+            } catch (err) {
+                showToast("Gagal menghubungi server.", "error");
+            } finally {
+                broadcastBtn.disabled = false;
+                broadcastBtn.innerHTML = '<span>📢</span> Kirim Ulang WA';
+            }
+        });
+    }
+
     // Close session
     document.getElementById("btn-close-session").addEventListener("click", async () => {
         const pin = prompt("Masukkan PIN Koordinator untuk menutup sesi:", "1234");

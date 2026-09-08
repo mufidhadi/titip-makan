@@ -74,6 +74,14 @@ async def test_full_titip_makan_api_lifecycle(db_session):
         assert summary["total_unpaid_count"] == 1
         assert "Rekap Titip Makan" in summary["whatsapp_recap_text"]
 
+        # 6b. Test broadcast endpoint with PIN validation
+        bad_broadcast = await client.post(f"/api/v1/sessions/{session_id}/broadcast", headers={"X-Coordinator-Pin": "wrong"})
+        assert bad_broadcast.status_code == 403
+
+        good_broadcast = await client.post(f"/api/v1/sessions/{session_id}/broadcast", headers={"X-Coordinator-Pin": "1234"})
+        assert good_broadcast.status_code == 200
+        assert good_broadcast.json()["status"] in ["skipped", "success"]
+
         # 7. Close session (requires coordinator pin)
         resp = await client.post(f"/api/v1/sessions/{session_id}/close", headers={"X-Coordinator-Pin": "1234"})
         assert resp.status_code == 200

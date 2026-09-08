@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     waha_base_url: str = "https://waha.masmuf.cloud"
     waha_api_key: str = ""
     default_group_chat_id: str = "120363409564046383@g.us"
+    app_public_url: str = "https://titip-irzi.masmuf.cloud"
+    waha_notify_group: bool = True
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

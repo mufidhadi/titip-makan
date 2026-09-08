@@ -52,6 +52,11 @@ async def test_full_browser_e2e_journey():
 
         # Wait for session title to update
         await expect(page.locator("#coord-session-title")).to_have_text("Sesi Mobile First MTN", timeout=5000)
+        assert await page.is_visible("#btn-broadcast-wa")
+
+        # Test broadcast WA button
+        await page.click("#btn-broadcast-wa")
+        await page.wait_for_timeout(300)
 
         # ----------------------------------------------------
         # 2. Member Page (Mobile View): Buka App -> Lihat Antrean -> Tambah Pesanan (Amal)

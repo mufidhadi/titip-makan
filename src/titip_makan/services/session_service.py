@@ -6,9 +6,15 @@ from titip_makan.repositories.session_repository import SessionRepository
 from titip_makan.schemas.session import SessionCreate, SessionOut
 from titip_makan.models.session import PoolSession
 
+import logging
+from titip_makan.services.notification_service import NotificationService
+
+logger = logging.getLogger(__name__)
+
 class SessionService:
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession, notifier: Optional[NotificationService] = None):
         self.repo = SessionRepository(db)
+        self.notifier = notifier if notifier is not None else NotificationService()
 
     def _to_schema(self, session: PoolSession) -> SessionOut:
         try:
@@ -42,7 +48,24 @@ class SessionService:
             cutoff_at=cutoff_at,
             coordinator_phone=data.coordinator_phone
         )
-        return self._to_schema(session)
+        session_out = self._to_schema(session)
+
+        # Automatically broadcast announcement to WhatsApp group
+        if self.notifier:
+            try:
+                await self.notifier.broadcast_session_opened(session_out)
+            except Exception as e:
+                logger.error(f"Failed to broadcast session opened to WhatsApp: {e}")
+
+        return session_out
+
+    async def broadcast_session(self, session_id: int, chat_id: Optional[str] = None):
+        session_out = await self.get_session_by_id(session_id)
+        if not session_out:
+            raise ValueError(f"Session with ID {session_id} not found")
+        if self.notifier:
+            return await self.notifier.broadcast_session_opened(session_out, chat_id)
+        return {"status": "skipped", "reason": "no_notifier"}
 
     async def get_latest_session(self) -> Optional[SessionOut]:
         session = await self.repo.get_latest()
