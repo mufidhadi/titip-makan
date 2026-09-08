@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Header, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from titip_makan.core.database import get_db
 from titip_makan.core.config import settings
-from titip_makan.schemas.session import SessionCreate, SessionOut
+from titip_makan.schemas.session import SessionCreate, SessionOut, SessionCutoffUpdate
 from titip_makan.schemas.order import SessionSummary, OrderCreate, OrderOut
 from titip_makan.services.session_service import SessionService
 from titip_makan.services.order_service import OrderService
@@ -56,6 +56,26 @@ async def close_session(
         return await service.close_session(session_id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+@router.patch("/{session_id}/cutoff", response_model=SessionOut)
+async def update_cutoff(
+    session_id: int,
+    data: SessionCutoffUpdate,
+    x_coordinator_pin: Optional[str] = Header(None),
+    db: AsyncSession = Depends(get_db)
+):
+    if settings.coordinator_pin and x_coordinator_pin != settings.coordinator_pin:
+        raise HTTPException(status_code=403, detail="Invalid coordinator PIN")
+    service = SessionService(db)
+    try:
+        return await service.update_cutoff(session_id, extend_minutes=data.extend_minutes, close_now=data.close_now or False)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+@router.get("/history", response_model=List[SessionOut])
+async def get_sessions_history(db: AsyncSession = Depends(get_db)):
+    service = SessionService(db)
+    return await service.get_history()
 
 @router.post("/{session_id}/broadcast")
 async def broadcast_session_announcement(

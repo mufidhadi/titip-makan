@@ -22,6 +22,11 @@ class SessionService:
         except Exception:
             vendors = [v.strip() for v in session.vendor_options.split(",") if v.strip()]
 
+        def _ensure_utc(dt: Optional[datetime]) -> Optional[datetime]:
+            if dt and dt.tzinfo is None:
+                return dt.replace(tzinfo=timezone.utc)
+            return dt
+
         return SessionOut(
             id=session.id,
             title=session.title,
@@ -30,14 +35,17 @@ class SessionService:
             vendor_options=vendors,
             payment_info=session.payment_info,
             status=session.status,
-            cutoff_at=session.cutoff_at,
-            created_at=session.created_at,
-            closed_at=session.closed_at
+            cutoff_at=_ensure_utc(session.cutoff_at),
+            created_at=_ensure_utc(session.created_at),
+            closed_at=_ensure_utc(session.closed_at)
         )
 
     async def create_session(self, data: SessionCreate) -> SessionOut:
-        cutoff_at = None
-        if data.cutoff_minutes is not None:
+        cutoff_at = data.cutoff_at
+        if cutoff_at is not None:
+            if cutoff_at.tzinfo is not None:
+                cutoff_at = cutoff_at.astimezone(timezone.utc)
+        elif data.cutoff_minutes is not None:
             cutoff_at = datetime.now(timezone.utc) + timedelta(minutes=data.cutoff_minutes)
 
         session = await self.repo.create(
@@ -99,3 +107,35 @@ class SessionService:
         if not session:
             raise ValueError(f"Session with ID {session_id} not found")
         return self._to_schema(session)
+
+    async def update_cutoff(
+        self,
+        session_id: int,
+        extend_minutes: Optional[int] = None,
+        close_now: bool = False
+    ) -> SessionOut:
+        session = await self.repo.get_by_id(session_id)
+        if not session:
+            raise ValueError(f"Session with ID {session_id} not found")
+
+        now = datetime.now(timezone.utc)
+
+        if close_now:
+            updated = await self.repo.update_cutoff(session_id, now)
+            return self._to_schema(updated)
+
+        if extend_minutes and extend_minutes > 0:
+            if session.cutoff_at:
+                curr_cutoff = session.cutoff_at if session.cutoff_at.tzinfo else session.cutoff_at.replace(tzinfo=timezone.utc)
+                base_time = max(now, curr_cutoff)
+            else:
+                base_time = now
+            new_cutoff = base_time + timedelta(minutes=extend_minutes)
+            updated = await self.repo.update_cutoff(session_id, new_cutoff)
+            return self._to_schema(updated)
+
+        return self._to_schema(session)
+
+    async def get_history(self) -> List[SessionOut]:
+        sessions = await self.repo.get_all_history()
+        return [self._to_schema(s) for s in sessions]

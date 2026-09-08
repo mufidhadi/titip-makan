@@ -50,6 +50,7 @@ async function checkActiveSession() {
                 closeBtn.classList.remove("hidden");
             }
 
+            window.coordinatorPhone = session.coordinator_phone || "+62 815-1382-5480";
             await loadSummary();
         } else {
             activeSessionId = null;
@@ -74,6 +75,26 @@ async function loadSummary() {
         document.getElementById("metric-amount").innerText = `Rp ${summary.total_amount.toLocaleString("id-ID")}`;
         document.getElementById("metric-paid").innerText = summary.total_paid_count;
         document.getElementById("metric-unpaid").innerText = summary.total_unpaid_count;
+
+        // Populate hover popover for unpaid orders
+        const popoverList = document.getElementById("unpaid-popover-list");
+        const popoverCount = document.getElementById("unpaid-popover-count");
+        if (popoverList && summary.unpaid_orders_users) {
+            popoverCount.innerText = `${summary.unpaid_orders_users.length} item`;
+            if (summary.unpaid_orders_users.length === 0) {
+                popoverList.innerHTML = `<p class="text-slate-400 py-1 text-center">Semua sudah lunas! 🎉</p>`;
+            } else {
+                popoverList.innerHTML = summary.unpaid_orders_users.map(u => `
+                    <div class="flex items-center justify-between py-1.5 text-slate-200">
+                        <div>
+                            <span class="font-bold text-slate-100">${u.user_name}</span>
+                            <span class="text-[10px] text-slate-400 block">${u.item_name} (${u.vendor})</span>
+                        </div>
+                        <span class="text-amber-300 font-bold whitespace-nowrap ml-2">Rp ${u.price.toLocaleString("id-ID")}</span>
+                    </div>
+                `).join("");
+            }
+        }
 
         // Render aggregated items for shopping
         renderAggregatedItems(summary.aggregated_items);
@@ -139,9 +160,29 @@ function renderOrdersTable(orders) {
         const tr = document.createElement("tr");
         tr.className = "hover:bg-slate-50 transition";
 
-        const paymentBadge = o.is_paid
-            ? `<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold text-[10px]">✅ Lunas</span>`
-            : `<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold text-[10px]">⏳ Belum</span>`;
+        const paymentStatus = o.payment_status || (o.is_paid ? "PAID" : "UNPAID");
+        let paymentBadge = "";
+        let actionBtn = "";
+
+        if (paymentStatus === "PAID" || o.is_paid) {
+            paymentBadge = `<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold text-[10px]">✅ Lunas</span>`;
+            actionBtn = `<button onclick="window.togglePaymentStatus(${o.id}, false, 'UNPAID')" 
+                class="px-2 py-1 rounded-lg text-[11px] font-semibold border border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100 transition">
+                Set Belum
+            </button>`;
+        } else if (paymentStatus === "PENDING_CONFIRMATION") {
+            paymentBadge = `<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold text-[10px] animate-pulse">🟡 Menunggu Konfirmasi</span>`;
+            actionBtn = `<button onclick="window.confirmPayment(${o.id})" 
+                class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-sm">
+                ✅ Konfirmasi Lunas
+            </button>`;
+        } else {
+            paymentBadge = `<span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-semibold text-[10px]">⏳ Belum Bayar</span>`;
+            actionBtn = `<button onclick="window.confirmPayment(${o.id})" 
+                class="px-2 py-1 rounded-lg text-[11px] font-semibold border border-emerald-300 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition">
+                Set Lunas
+            </button>`;
+        }
 
         const priceCell = o.price > 0
             ? `<span class="font-semibold text-slate-800">Rp ${o.price.toLocaleString("id-ID")}</span>
@@ -159,10 +200,7 @@ function renderOrdersTable(orders) {
             <td class="py-2.5 px-3">${priceCell}</td>
             <td class="py-2.5 px-3">${paymentBadge}</td>
             <td class="py-2.5 px-3 text-right space-x-1">
-                <button onclick="window.togglePaymentStatus(${o.id}, ${!o.is_paid})" 
-                    class="px-2 py-1 rounded-lg text-[11px] font-semibold border ${o.is_paid ? 'border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100' : 'border-emerald-300 text-emerald-700 bg-emerald-50 hover:bg-emerald-100'} transition">
-                    ${o.is_paid ? 'Set Belum' : 'Set Lunas'}
-                </button>
+                ${actionBtn}
                 <button onclick="window.deleteOrder(${o.id}, '${escapeJs(o.user_name)}')" 
                     class="px-2 py-1 rounded-lg text-[11px] font-semibold border border-rose-200 text-rose-600 bg-rose-50 hover:bg-rose-100 transition">
                     🗑️
@@ -204,12 +242,33 @@ window.promptEditPrice = async function(orderId, currentPrice, itemName) {
     }
 };
 
-window.togglePaymentStatus = async function(orderId, newStatus) {
+window.confirmPayment = async function(orderId) {
     try {
         const resp = await fetch(`/api/v1/orders/${orderId}/payment`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ is_paid: newStatus })
+            body: JSON.stringify({ is_paid: true, payment_status: "PAID" })
+        });
+        if (resp.ok) {
+            await loadSummary();
+            showToast("Pembayaran dikonfirmasi Lunas! ✅", "success");
+        } else {
+            showToast("Gagal mengonfirmasi pembayaran.", "error");
+        }
+    } catch (err) {
+        showToast("Terjadi kesalahan jaringan.", "error");
+    }
+};
+
+window.togglePaymentStatus = async function(orderId, newStatus, paymentStatus) {
+    try {
+        const resp = await fetch(`/api/v1/orders/${orderId}/payment`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                is_paid: newStatus,
+                payment_status: paymentStatus || (newStatus ? "PAID" : "UNPAID")
+            })
         });
         if (resp.ok) {
             await loadSummary();
@@ -291,6 +350,62 @@ function setupEventListeners() {
             showToast("Terjadi kesalahan jaringan.", "error");
         }
     });
+
+    // Cutoff controls
+    const btnExtend5 = document.getElementById("btn-extend-5");
+    if (btnExtend5) {
+        btnExtend5.addEventListener("click", () => updateCutoff(5, false));
+    }
+    const btnExtend10 = document.getElementById("btn-extend-10");
+    if (btnExtend10) {
+        btnExtend10.addEventListener("click", () => updateCutoff(10, false));
+    }
+    const btnCloseCutoffNow = document.getElementById("btn-close-cutoff-now");
+    if (btnCloseCutoffNow) {
+        btnCloseCutoffNow.addEventListener("click", () => {
+            if (confirm("Tutup batas waktu order sesi sekarang? Anggota tidak akan bisa memesan lagi.")) {
+                updateCutoff(0, true);
+            }
+        });
+    }
+
+    async function updateCutoff(extendMinutes, closeNow) {
+        if (!activeSessionId) return;
+        try {
+            const resp = await fetch(`/api/v1/sessions/${activeSessionId}/cutoff`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    extend_minutes: extendMinutes || null,
+                    close_now: closeNow || false
+                })
+            });
+            if (resp.ok) {
+                showToast(closeNow ? "Batas waktu pemesanan ditutup sekarang!" : `Waktu sesi diperpanjang +${extendMinutes} menit!`, "success");
+                await checkActiveSession();
+            } else {
+                showToast("Gagal mengubah batas waktu.", "error");
+            }
+        } catch (e) {
+            showToast("Terjadi kesalahan jaringan.", "error");
+        }
+    }
+
+    // Send recap directly to coordinator WhatsApp
+    const btnSendWaCoord = document.getElementById("btn-send-wa-coord");
+    if (btnSendWaCoord) {
+        btnSendWaCoord.addEventListener("click", () => {
+            if (!window.currentRecapText) {
+                showToast("Belum ada teks rekap.", "warning");
+                return;
+            }
+            let phone = window.coordinatorPhone || "+62 815-1382-5480";
+            phone = phone.replace(/[^0-9]/g, "");
+            if (phone.startsWith("0")) phone = "62" + phone.slice(1);
+            const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(window.currentRecapText)}`;
+            window.open(waUrl, "_blank");
+        });
+    }
 
     // Copy WA recap text
     document.getElementById("btn-copy-wa").addEventListener("click", async () => {

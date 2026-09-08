@@ -91,17 +91,28 @@
                 <p id="coord-session-info" class="text-xs text-indigo-200 mt-1">Batas Waktu: -</p>
             </div>
             <div class="flex flex-wrap items-center gap-2">
-                <button id="btn-copy-link" class="px-3.5 py-2 bg-indigo-800 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl border border-indigo-700 transition flex items-center gap-1.5">
-                    <span>🔗</span> Salin Link Order
+                <!-- Cutoff Extension Controls -->
+                <div class="flex items-center gap-1 bg-indigo-950/70 p-1.5 rounded-xl border border-indigo-700/60">
+                    <span class="text-[10px] text-indigo-300 font-bold px-1">⏱️ Waktu:</span>
+                    <button id="btn-extend-5" class="px-2 py-1 bg-indigo-700 hover:bg-indigo-600 active:bg-indigo-800 text-white rounded-lg text-xs font-bold transition shadow-xs" title="Tambah 5 menit">+5m</button>
+                    <button id="btn-extend-10" class="px-2 py-1 bg-indigo-700 hover:bg-indigo-600 active:bg-indigo-800 text-white rounded-lg text-xs font-bold transition shadow-xs" title="Tambah 10 menit">+10m</button>
+                    <button id="btn-close-cutoff-now" class="px-2 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-xs font-bold transition shadow-xs" title="Tutup batas waktu order sekarang">Tutup Order</button>
+                </div>
+
+                <button id="btn-copy-link" class="px-3 py-2 bg-indigo-800 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl border border-indigo-700 transition flex items-center gap-1.5">
+                    <span>🔗</span> Salin Link
                 </button>
-                <button id="btn-copy-wa" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl transition flex items-center gap-1.5 shadow-sm">
-                    <span>📋</span> Salin Rekap WA
+                <button id="btn-copy-wa" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl transition flex items-center gap-1.5 shadow-sm">
+                    <span>📋</span> Salin Rekap
                 </button>
-                <button id="btn-broadcast-wa" class="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-semibold rounded-xl transition flex items-center gap-1.5 shadow-sm" title="Kirim Pengumuman ke Grup WA MTN CORE">
-                    <span>📢</span> Kirim Ulang WA
+                <button id="btn-send-wa-coord" class="px-3 py-2 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-semibold rounded-xl transition flex items-center gap-1.5 shadow-sm" title="Buka WhatsApp untuk kirim rekap ke Koordinator">
+                    <span>📲</span> Rekap ke WA
                 </button>
-                <button id="btn-close-session" class="px-3.5 py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold rounded-xl transition flex items-center gap-1.5 shadow-sm">
-                    <span>🔒</span> Tutup Sesi
+                <button id="btn-broadcast-wa" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white text-xs font-semibold rounded-xl transition flex items-center gap-1.5 shadow-sm" title="Kirim Pengumuman ke Grup WA MTN CORE">
+                    <span>📢</span> Kirim Ulang Grup
+                </button>
+                <button id="btn-close-session" class="px-3 py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold rounded-xl transition flex items-center gap-1.5 shadow-sm">
+                    <span>🔒</span> Selesai
                 </button>
             </div>
         </div>
@@ -120,9 +131,24 @@
                 <p class="text-xs text-slate-500 font-medium">Sudah Lunas</p>
                 <p id="metric-paid" class="text-2xl font-bold text-emerald-600 mt-1">0</p>
             </div>
-            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                <p class="text-xs text-slate-500 font-medium">Belum Bayar</p>
+            <!-- Belum Bayar Card with Hover Popover -->
+            <div id="card-metric-unpaid" class="relative group bg-white p-4 rounded-xl border border-slate-200 shadow-sm cursor-pointer">
+                <div class="flex items-center justify-between">
+                    <p class="text-xs text-slate-500 font-medium">Belum Bayar</p>
+                    <span class="text-[9px] bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded font-bold">ℹ️ Hover List</span>
+                </div>
                 <p id="metric-unpaid" class="text-2xl font-bold text-amber-600 mt-1">0</p>
+
+                <!-- Hover Tooltip Popover -->
+                <div id="unpaid-popover" class="hidden group-hover:block absolute top-full left-0 sm:right-0 sm:left-auto mt-2 z-50 w-72 bg-slate-900 text-white text-xs rounded-2xl shadow-2xl p-3.5 border border-slate-700 animate-fadeIn">
+                    <div class="font-bold text-amber-400 mb-2 border-b border-slate-800 pb-1.5 flex items-center justify-between">
+                        <span>⏳ Daftar Belum Lunas</span>
+                        <span id="unpaid-popover-count" class="text-[10px] text-slate-400 font-normal">0 orang</span>
+                    </div>
+                    <div id="unpaid-popover-list" class="max-h-56 overflow-y-auto space-y-1.5 divide-y divide-slate-800/80">
+                        <p class="text-slate-400 py-1 text-center">Semua sudah lunas! 🎉</p>
+                    </div>
+                </div>
             </div>
         </div>
 

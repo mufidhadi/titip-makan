@@ -15,6 +15,7 @@ class OrderItem(Base):
     notes = Column(Text, nullable=True, default="")
     price = Column(Integer, nullable=False, default=0)
     is_paid = Column(Boolean, nullable=False, default=False)
+    payment_status = Column(String(50), nullable=False, default="UNPAID")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
     session = relationship("PoolSession", back_populates="orders")

@@ -16,6 +16,7 @@ class SessionCreate(BaseModel):
     vendor_options: List[str] = Field(default_factory=lambda: ["Mie Ayam", "Babun"])
     payment_info: Optional[str] = Field(default="gopay ke +62 815-1382-5480", examples=["gopay ke +62 815-1382-5480"])
     cutoff_minutes: Optional[int] = Field(default=30, description="Cutoff duration in minutes from now")
+    cutoff_at: Optional[datetime] = Field(default=None, description="Explicit cutoff datetime")
 
 class SessionOut(BaseModel):
     id: int
@@ -34,3 +35,7 @@ class SessionOut(BaseModel):
     @field_serializer("cutoff_at", "created_at", "closed_at")
     def serialize_dt(self, dt: Optional[datetime]) -> Optional[str]:
         return serialize_utc(dt)
+
+class SessionCutoffUpdate(BaseModel):
+    extend_minutes: Optional[int] = Field(default=None, ge=1, le=120, description="Perpanjangan waktu dalam menit")
+    close_now: Optional[bool] = Field(default=False, description="Tutup waktu pemesanan seketika")

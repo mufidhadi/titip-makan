@@ -246,9 +246,20 @@ function renderDesktopTable(orders) {
             tr.classList.add("bg-emerald-50", "animate-pulse");
         }
 
-        const paymentBadge = o.is_paid
-            ? '<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold text-[10px]">✅ Lunas</span>'
-            : '<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold text-[10px]">⏳ Belum</span>';
+        const paymentStatus = o.payment_status || (o.is_paid ? "PAID" : "UNPAID");
+        let paymentBadge = "";
+        let claimPaidBtn = "";
+        let editBtn = "";
+        let cancelBtn = "";
+
+        if (paymentStatus === "PAID" || o.is_paid) {
+            paymentBadge = '<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold text-[10px]">✅ Lunas</span>';
+        } else if (paymentStatus === "PENDING_CONFIRMATION") {
+            paymentBadge = '<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold text-[10px] animate-pulse">🟡 Menunggu Konfirmasi</span>';
+        } else {
+            paymentBadge = '<span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-semibold text-[10px]">⏳ Belum</span>';
+            claimPaidBtn = `<button onclick="window.claimPaid(${o.id})" class="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-lg text-[11px] font-bold transition flex items-center gap-1" title="Tandai sudah transfer/bayar">💳 Sudah Bayar</button>`;
+        }
 
         const priceDisplay = o.price > 0
             ? `<span class="font-semibold text-slate-900">Rp ${o.price.toLocaleString("id-ID")}</span>`
@@ -259,9 +270,10 @@ function renderDesktopTable(orders) {
 
         const notifyBtn = `<button onclick="window.notifySpecificOrder('${escapeHtml(o.user_name)}', '${escapeHtml(o.vendor)}', '${escapeHtml(o.item_name)}', '${escapeHtml(o.notes || "")}')" class="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-[11px] font-semibold transition border border-emerald-200" title="Kirim Notif WA">📲 WA</button>`;
 
-        const cancelBtn = (isSessionOpen && isMyOrder)
-            ? `<button onclick="window.cancelMyOrder(${o.id}, '${escapeHtml(o.user_name)}')" class="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-[11px] font-semibold transition border border-rose-200 ml-1" title="Batalkan pesanan">✕</button>`
-            : "";
+        if (paymentStatus === "UNPAID" && isSessionOpen && (isMyOrder || !currentUsername)) {
+            editBtn = `<button onclick="window.openEditOrderModal(${o.id}, '${escapeHtml(o.user_name)}', '${escapeHtml(o.vendor)}', '${escapeHtml(o.item_name)}', '${escapeHtml(o.notes || "")}', ${o.price || 0})" class="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-[11px] font-semibold transition ml-1" title="Edit Pesanan">✏️ Edit</button>`;
+            cancelBtn = `<button onclick="window.cancelMyOrder(${o.id}, '${escapeHtml(o.user_name)}')" class="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-[11px] font-semibold transition border border-rose-200 ml-1" title="Batalkan pesanan">✕</button>`;
+        }
 
         tr.innerHTML = `
             <td class="py-3 px-3.5 text-center font-bold text-slate-500">${index + 1}</td>
@@ -271,7 +283,7 @@ function renderDesktopTable(orders) {
             <td class="py-3 px-3.5 text-slate-600">${notesText}</td>
             <td class="py-3 px-3.5">${priceDisplay}</td>
             <td class="py-3 px-3.5 text-center">${paymentBadge}</td>
-            <td class="py-3 px-3.5 text-right whitespace-nowrap">${notifyBtn}${cancelBtn}</td>
+            <td class="py-3 px-3.5 text-right whitespace-nowrap space-x-1">${claimPaidBtn}${notifyBtn}${editBtn}${cancelBtn}</td>
         `;
         tbody.appendChild(tr);
     });
@@ -304,9 +316,20 @@ function renderMobileCards(orders) {
             card.classList.add("ring-2", "ring-emerald-400", "bg-emerald-50/40");
         }
 
-        const paymentBadge = o.is_paid
-            ? '<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold text-[10px]">✅ Lunas</span>'
-            : '<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-bold text-[10px]">⏳ Belum</span>';
+        const paymentStatus = o.payment_status || (o.is_paid ? "PAID" : "UNPAID");
+        let paymentBadge = "";
+        let claimPaidBtn = "";
+        let editBtn = "";
+        let cancelBtn = "";
+
+        if (paymentStatus === "PAID" || o.is_paid) {
+            paymentBadge = '<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold text-[10px]">✅ Lunas</span>';
+        } else if (paymentStatus === "PENDING_CONFIRMATION") {
+            paymentBadge = '<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold text-[10px] animate-pulse">🟡 Menunggu Konfirmasi</span>';
+        } else {
+            paymentBadge = '<span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-semibold text-[10px]">⏳ Belum</span>';
+            claimPaidBtn = `<button onclick="window.claimPaid(${o.id})" class="py-1.5 px-2.5 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-xl text-xs font-bold transition border border-amber-300 flex items-center gap-1">💳 Sudah Bayar</button>`;
+        }
 
         const priceDisplay = o.price > 0
             ? `<span class="font-extrabold text-slate-900 text-sm">Rp ${o.price.toLocaleString("id-ID")}</span>`
@@ -315,11 +338,12 @@ function renderMobileCards(orders) {
         const notesText = o.notes ? `<p class="text-xs text-slate-500 italic mt-0.5 bg-slate-50 p-2 rounded-lg border border-slate-100">"${o.notes}"</p>` : "";
         const myBadge = isMyOrder ? `<span class="px-1.5 py-0.2 bg-indigo-600 text-white rounded text-[9px] font-bold uppercase tracking-wider">Kamu</span>` : "";
 
-        const cancelBtn = (isSessionOpen && isMyOrder)
-            ? `<button onclick="window.cancelMyOrder(${o.id}, '${escapeHtml(o.user_name)}')" class="py-1.5 px-3 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-xs font-bold transition border border-rose-200 flex items-center gap-1" title="Batalkan pesanan">✕ Batal</button>`
-            : "";
+        if (paymentStatus === "UNPAID" && isSessionOpen && (isMyOrder || !currentUsername)) {
+            editBtn = `<button onclick="window.openEditOrderModal(${o.id}, '${escapeHtml(o.user_name)}', '${escapeHtml(o.vendor)}', '${escapeHtml(o.item_name)}', '${escapeHtml(o.notes || "")}', ${o.price || 0})" class="py-1.5 px-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-bold transition border border-indigo-200 flex items-center gap-1">✏️ Edit</button>`;
+            cancelBtn = `<button onclick="window.cancelMyOrder(${o.id}, '${escapeHtml(o.user_name)}')" class="py-1.5 px-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-xs font-bold transition border border-rose-200 flex items-center gap-1" title="Batalkan pesanan">✕ Batal</button>`;
+        }
 
-        const notifyBtn = `<button onclick="window.notifySpecificOrder('${escapeHtml(o.user_name)}', '${escapeHtml(o.vendor)}', '${escapeHtml(o.item_name)}', '${escapeHtml(o.notes || "")}')" class="py-1.5 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl text-xs font-bold transition border border-emerald-200 flex items-center gap-1"><span>📲</span> Notif WA</button>`;
+        const notifyBtn = `<button onclick="window.notifySpecificOrder('${escapeHtml(o.user_name)}', '${escapeHtml(o.vendor)}', '${escapeHtml(o.item_name)}', '${escapeHtml(o.notes || "")}')" class="py-1.5 px-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl text-xs font-bold transition border border-emerald-200 flex items-center gap-1"><span>📲</span> Notif WA</button>`;
 
         card.innerHTML = `
             <div class="flex items-start justify-between gap-2">
@@ -343,12 +367,14 @@ function renderMobileCards(orders) {
                 ${notesText}
             </div>
 
-            <div class="pl-8 pt-1 flex items-center justify-between border-t border-slate-100 mt-1">
+            <div class="pl-8 pt-1 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 mt-1">
                 <div>
                     ${priceDisplay}
                 </div>
-                <div class="flex items-center gap-1.5">
+                <div class="flex flex-wrap items-center gap-1.5">
+                    ${claimPaidBtn}
                     ${notifyBtn}
+                    ${editBtn}
                     ${cancelBtn}
                 </div>
             </div>
@@ -400,6 +426,45 @@ window.cancelMyOrder = async function(orderId, userName) {
     }
 };
 
+window.claimPaid = async function(orderId) {
+    if (!confirm("Tandai pesanan ini sudah kamu bayar lunas? Status akan menunggu konfirmasi Koordinator.")) return;
+    try {
+        const resp = await fetch(`/api/v1/orders/${orderId}/claim-paid`, {
+            method: "POST"
+        });
+        if (resp.ok) {
+            showToast("Berhasil ditandai sudah bayar! Menunggu konfirmasi Koordinator. 👍", "success");
+            await loadOrders();
+        } else {
+            const err = await resp.json();
+            showToast(err.detail || "Gagal menandai pembayaran.", "error");
+        }
+    } catch (e) {
+        showToast("Terjadi kesalahan jaringan.", "error");
+    }
+};
+
+window.openEditOrderModal = function(orderId, userName, vendor, itemName, notes, price) {
+    const modal = document.getElementById("modal-order");
+    document.getElementById("modal-step-form").classList.remove("hidden");
+    document.getElementById("modal-step-success").classList.add("hidden");
+
+    document.getElementById("modal-title").innerHTML = "<span>✏️</span> Edit Pesanan Kamu";
+    document.getElementById("edit-order-id").value = orderId;
+    document.getElementById("input-username").value = userName;
+    document.getElementById("input-tenant").value = vendor;
+    document.getElementById("input-menu").value = itemName;
+    document.getElementById("input-notes").value = notes || "";
+    document.getElementById("input-price").value = price > 0 ? price : "";
+    
+    const label = document.getElementById("btn-submit-order-label");
+    if (label) label.innerText = "Simpan Perubahan";
+
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
+    document.getElementById("input-menu").focus();
+};
+
 function setupQuickNames() {
     const savedName = getSavedUsername();
     if (savedName) {
@@ -429,7 +494,19 @@ function setupModalHandlers() {
         }
         document.getElementById("modal-step-form").classList.remove("hidden");
         document.getElementById("modal-step-success").classList.add("hidden");
+        
+        // Reset modal to create mode
+        document.getElementById("modal-title").innerHTML = "<span>🍜</span> Tambah Pesanan Baru";
+        document.getElementById("edit-order-id").value = "";
+        const label = document.getElementById("btn-submit-order-label");
+        if (label) label.innerText = "Simpan Pesanan";
+        document.getElementById("input-tenant").value = "";
+        document.getElementById("input-menu").value = "";
+        document.getElementById("input-notes").value = "";
+        document.getElementById("input-price").value = "";
+
         modal.classList.remove("hidden");
+        modal.classList.add("flex");
 
         const savedName = getSavedUsername();
         if (savedName) {
@@ -442,6 +519,7 @@ function setupModalHandlers() {
 
     function closeModal() {
         modal.classList.add("hidden");
+        modal.classList.remove("flex");
     }
 
     if (openBtn) openBtn.addEventListener("click", openModal);
@@ -505,7 +583,45 @@ function setupFormEventListeners() {
 
         saveUsername(username);
 
+        const editOrderId = document.getElementById("edit-order-id").value;
         const submitBtn = document.getElementById("btn-submit-order");
+
+        if (editOrderId) {
+            submitBtn.disabled = true;
+            submitBtn.innerText = "Memperbarui...";
+            try {
+                const resp = await fetch(`/api/v1/orders/${editOrderId}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        vendor: tenant,
+                        item_name: menu,
+                        variant: "",
+                        notes: notes,
+                        price: price
+                    })
+                });
+                if (!resp.ok) {
+                    const err = await resp.json();
+                    showToast(`Gagal: ${err.detail || "Gagal memperbarui pesanan"}`, "error");
+                    return;
+                }
+                document.getElementById("modal-order").classList.add("hidden");
+                document.getElementById("modal-order").classList.remove("flex");
+                document.getElementById("edit-order-id").value = "";
+                await loadOrders();
+                await fetchSuggestions();
+                showToast("Pesanan kamu berhasil diperbarui! ✨", "success");
+            } catch (err) {
+                showToast("Terjadi kesalahan jaringan.", "error");
+            } finally {
+                submitBtn.disabled = false;
+                const label = document.getElementById("btn-submit-order-label");
+                if (label) label.innerText = "Simpan Pesanan";
+            }
+            return;
+        }
+
         submitBtn.disabled = true;
         submitBtn.innerText = "Menyimpan...";
 

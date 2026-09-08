@@ -27,6 +27,7 @@ class OrderRepository:
             notes=notes,
             price=price,
             is_paid=False,
+            payment_status="UNPAID",
             created_at=datetime.now(timezone.utc)
         )
         self.db.add(order)
@@ -46,10 +47,40 @@ class OrderRepository:
         )
         return list(result.scalars().all())
 
-    async def update_payment(self, order_id: int, is_paid: bool) -> Optional[OrderItem]:
+    async def get_all(self) -> List[OrderItem]:
+        result = await self.db.execute(select(OrderItem).order_by(OrderItem.created_at.desc()))
+        return list(result.scalars().all())
+
+    async def update_payment(self, order_id: int, is_paid: bool, payment_status: Optional[str] = None) -> Optional[OrderItem]:
         order = await self.get_by_id(order_id)
         if order:
             order.is_paid = is_paid
+            if payment_status is not None:
+                order.payment_status = payment_status
+            else:
+                order.payment_status = "PAID" if is_paid else "UNPAID"
+            await self.db.commit()
+            await self.db.refresh(order)
+        return order
+
+    async def update_order(
+        self,
+        order_id: int,
+        vendor: Optional[str] = None,
+        item_name: Optional[str] = None,
+        notes: Optional[str] = None,
+        price: Optional[int] = None
+    ) -> Optional[OrderItem]:
+        order = await self.get_by_id(order_id)
+        if order:
+            if vendor is not None:
+                order.vendor = vendor
+            if item_name is not None:
+                order.item_name = item_name
+            if notes is not None:
+                order.notes = notes
+            if price is not None:
+                order.price = price
             await self.db.commit()
             await self.db.refresh(order)
         return order

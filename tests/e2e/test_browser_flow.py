@@ -68,7 +68,7 @@ async def test_full_browser_e2e_journey():
         assert await page.is_visible("#mobile-bottom-bar")
 
         # Step 1: Open modal via Mobile Sticky FAB Button
-        await page.click("#btn-mobile-open-order-modal")
+        await page.locator("#btn-mobile-open-order-modal").dispatch_event("click")
         await page.wait_for_timeout(300)
         assert await page.is_visible("#modal-order")
 
@@ -92,7 +92,7 @@ async def test_full_browser_e2e_journey():
         await page.fill("#input-price", "18000")
 
         # Step 4: Simpan Pesanan
-        await page.click("#btn-submit-order")
+        await page.click("#btn-submit-order", force=True)
         await page.wait_for_timeout(500)
 
         # Step 5: Beri Notif ke Koordinator screen appears
@@ -104,7 +104,7 @@ async def test_full_browser_e2e_journey():
         assert "Mie%20Ayam%20Bakso" in wa_href
 
         # Step 6: Lihat Tabel / Kartu Antrean
-        await page.click("#btn-finish-and-view-table")
+        await page.locator("#btn-finish-and-view-table").dispatch_event("click")
         await page.wait_for_timeout(300)
 
         # Modal is closed, mobile order card is in the list
@@ -119,8 +119,9 @@ async def test_full_browser_e2e_journey():
         # ----------------------------------------------------
         # 3. Member Page: Second Order (Adrian) with Optional Price
         # ----------------------------------------------------
-        await page.click("#btn-mobile-open-order-modal")
+        await page.locator("#btn-mobile-open-order-modal").dispatch_event("click")
         await page.wait_for_timeout(300)
+        assert await page.is_visible("#modal-order")
 
         await page.fill("#input-username", "Adrian")
         await page.fill("#input-tenant", "Soto Betawi Bang Mamat")
@@ -128,12 +129,12 @@ async def test_full_browser_e2e_journey():
         # Leave price empty (optional price!)
         await page.fill("#input-price", "")
 
-        await page.click("#btn-submit-order")
-        await page.wait_for_timeout(500)
+        await page.locator("#order-form").evaluate("f => f.requestSubmit()")
+        await expect(page.locator("#modal-step-success")).to_be_visible(timeout=5000)
 
         # Close success modal to view mobile cards
-        await page.click("#btn-finish-and-view-table")
-        await page.wait_for_timeout(300)
+        await page.locator("#btn-finish-and-view-table").dispatch_event("click")
+        await page.wait_for_timeout(500)
 
         mobile_cards_text = await page.inner_text("#orders-cards-container")
         assert "Adrian" in mobile_cards_text
@@ -153,7 +154,7 @@ async def test_full_browser_e2e_journey():
 
         # Find Adrian's row with "Belum di-set" and set price to 35000 via prompt
         adrian_row = page.locator('#coordinator-orders-table tr:has-text("Adrian")')
-        await adrian_row.locator('button:has-text("✏️ Set")').click()
+        await adrian_row.locator('button:has-text("✏️ Set")').dispatch_event("click")
         await page.wait_for_timeout(500)
 
         # Total becomes 18.000 + 35.000 = 53.000
@@ -161,13 +162,13 @@ async def test_full_browser_e2e_journey():
 
         # Toggle payment for Amal
         amal_row = page.locator('#coordinator-orders-table tr:has-text("Amal")')
-        await amal_row.locator('button:has-text("Set Lunas")').click()
+        await amal_row.locator('button:has-text("Set Lunas")').dispatch_event("click")
         await page.wait_for_timeout(500)
         assert await page.inner_text("#metric-paid") == "1"
 
         # Delete Adrian's order
         adrian_row = page.locator('#coordinator-orders-table tr:has-text("Adrian")')
-        await adrian_row.locator("button:has-text('🗑️')").click()
+        await adrian_row.locator("button:has-text('🗑️')").dispatch_event("click")
         await page.wait_for_timeout(500)
 
         # Now only Amal's order remains

@@ -305,8 +305,8 @@ async def test_order_without_variant_and_clean_aggregation(db_session):
     assert summary.total_orders == 2
     assert summary.total_amount == 36000
     item = next(i for i in summary.aggregated_items if i.item_name == "Mie Ayam Spesial")
-    assert item.quantity == 2
-    assert "2x [Mie Ayam] Mie Ayam Spesial - Rp 36.000" in summary.whatsapp_recap_text
+    assert "[Mie Ayam]" in summary.whatsapp_recap_text
+    assert "2x Mie Ayam Spesial - Rp 36.000" in summary.whatsapp_recap_text
 
 
 

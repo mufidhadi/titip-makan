@@ -66,3 +66,17 @@ class SessionRepository:
             await self.db.commit()
             await self.db.refresh(session)
         return session
+
+    async def update_cutoff(self, session_id: int, cutoff_at: Optional[datetime]) -> Optional[PoolSession]:
+        session = await self.get_by_id(session_id)
+        if session:
+            session.cutoff_at = cutoff_at
+            await self.db.commit()
+            await self.db.refresh(session)
+        return session
+
+    async def get_all_history(self) -> List[PoolSession]:
+        result = await self.db.execute(
+            select(PoolSession).order_by(PoolSession.created_at.desc())
+        )
+        return list(result.scalars().all())

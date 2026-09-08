@@ -30,4 +30,9 @@ async def init_db():
             await conn.execute(text("ALTER TABLE pool_sessions ADD COLUMN coordinator_phone VARCHAR(50)"))
         except Exception:
             pass
+        try:
+            await conn.execute(text("ALTER TABLE order_items ADD COLUMN payment_status VARCHAR(50) DEFAULT 'UNPAID'"))
+            await conn.execute(text("UPDATE order_items SET payment_status = 'PAID' WHERE is_paid = 1"))
+        except Exception:
+            pass
 
