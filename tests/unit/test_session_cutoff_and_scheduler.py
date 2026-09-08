@@ -79,3 +79,41 @@ async def test_scheduler_idempotent_single_session_per_day(db_session):
     fake_wednesday_later = datetime(2026, 9, 9, 10, 5, 0, tzinfo=WIB)
     s2 = await scheduler.check_and_create_daily_session(now_wib=fake_wednesday_later)
     assert s2 is None
+
+@pytest.mark.asyncio
+async def test_create_session_routes_wa_to_personal_in_development(db_session):
+    from titip_makan.services.notification_service import NotificationService
+    import httpx
+
+    notifier = NotificationService(
+        base_url="https://waha.masmuf.cloud",
+        api_key="test-api-key",
+        default_chat_id="120363409564046383@g.us",
+        mufid_chat_id="6285740130359@c.us",
+        environment="development",
+        enabled=True
+    )
+
+    with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
+        mock_post.return_value = httpx.Response(
+            200,
+            json={"status": "success", "_data": {"id": "test_msg_id"}},
+            request=httpx.Request("POST", "https://waha.masmuf.cloud/api/sendText")
+        )
+
+        service = SessionService(db_session, notifier=notifier)
+        session = await service.create_session(
+            SessionCreate(
+                title="Sesi Test Lokal Baru",
+                coordinator_name="Irzi",
+                vendor_options=["Babun"]
+            )
+        )
+        assert session.id is not None
+
+        mock_post.assert_called_once()
+        call_kwargs = mock_post.call_args.kwargs
+        # Verify it went to mas mufid's personal WA, and NOT the group
+        assert call_kwargs["json"]["chatId"] == "6285740130359@c.us"
+        assert call_kwargs["json"]["chatId"] != "120363409564046383@g.us"
+        assert "TEST LOKAL" in call_kwargs["json"]["text"]

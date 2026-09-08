@@ -31,11 +31,54 @@ def test_format_session_announcement():
     assert "gopay ke +62 815-1382-5480" in msg
 
 @pytest.mark.asyncio
-async def test_notification_service_send_success():
+async def test_notification_service_routes_to_personal_wa_in_development():
     service = NotificationService(
         base_url="https://waha.masmuf.cloud",
         api_key="fake-key",
         default_chat_id="120363409564046383@g.us",
+        mufid_chat_id="6285740130359@c.us",
+        environment="development",
+        enabled=True
+    )
+    
+    import httpx
+    with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
+        mock_post.return_value = httpx.Response(
+            200,
+            json={"status": "success", "_data": {"id": "true_6285740130359@c.us_3EB0"}},
+            request=httpx.Request("POST", "https://waha.masmuf.cloud/api/sendText")
+        )
+        
+        session = SessionOut(
+            id=1,
+            title="Sesi Makan Siang Test",
+            status="OPEN",
+            coordinator_name="Irzi",
+            coordinator_phone="+62 815-1382-5480",
+            vendor_options=["Babun"],
+            payment_info="gopay",
+            cutoff_at=None,
+            created_at=datetime.now(timezone.utc),
+            orders=[]
+        )
+        
+        res = await service.broadcast_session_opened(session)
+        assert res["status"] == "success"
+        mock_post.assert_called_once()
+        call_kwargs = mock_post.call_args.kwargs
+        # Must be sent to personal WA, NOT the group!
+        assert call_kwargs["json"]["chatId"] == "6285740130359@c.us"
+        assert call_kwargs["json"]["chatId"] != "120363409564046383@g.us"
+        assert "TEST LOKAL" in call_kwargs["json"]["text"]
+
+@pytest.mark.asyncio
+async def test_notification_service_routes_to_group_in_production():
+    service = NotificationService(
+        base_url="https://waha.masmuf.cloud",
+        api_key="fake-key",
+        default_chat_id="120363409564046383@g.us",
+        mufid_chat_id="6285740130359@c.us",
+        environment="production",
         enabled=True
     )
     
@@ -49,7 +92,7 @@ async def test_notification_service_send_success():
         
         session = SessionOut(
             id=1,
-            title="Sesi Makan Siang",
+            title="Sesi Makan Siang Prod",
             status="OPEN",
             coordinator_name="Irzi",
             coordinator_phone="+62 815-1382-5480",
@@ -65,7 +108,7 @@ async def test_notification_service_send_success():
         mock_post.assert_called_once()
         call_kwargs = mock_post.call_args.kwargs
         assert call_kwargs["json"]["chatId"] == "120363409564046383@g.us"
-        assert "asisten mas mufid" in call_kwargs["json"]["text"].lower()
+        assert "TEST LOKAL" not in call_kwargs["json"]["text"]
 
 @pytest.mark.asyncio
 async def test_notification_service_disabled_skips():
