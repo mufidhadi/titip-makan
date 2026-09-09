@@ -73,3 +73,9 @@ Seluruh fungsi dan alur kerja diuji menggunakan `pytest` dengan prinsip Test-Dri
 ```bash
 uv run pytest -v
 ```
+
+---
+
+## 🤝 Kontribusi
+
+Tertarik untuk berkontribusi? Silakan baca panduan lengkap pengembangan, standar kode (uv & TDD), serta alur kerja Pull Request pada [CONTRIBUTING.md](CONTRIBUTING.md).
