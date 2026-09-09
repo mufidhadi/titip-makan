@@ -106,3 +106,11 @@ Perbaikan layout dan responsiveness pada top navigation bar aplikasi **Titip Mak
 - Menggunakan `min-w-0` adalah kunci utama kestabilan tata letak flexbox pada layar responsif, khususnya saat menangani teks panjang atau kombinasi ikon dan judul.
 - Memisahkan script UI kontroler ke dalam file independen (`nav.js`) menjaga konsistensi DRY (*Don't Repeat Yourself*) dan memudahkan pemeliharaan tanpa mengotori template utama.
 - Pengujian visual berbasis screenshot otomatis dengan Playwright memberikan verifikasi objektif berbasis data nyata yang dapat langsung dibandingkan dengan keluhan/screenshot pengguna.
+
+7. **Verifikasi Live Production di VPS Hostinger**:
+   - Melakukan live testing menggunakan Playwright terhadap URL publik `https://titip-irzi.masmuf.cloud/leaderboard` (viewport 390x844):
+     - Hasil pengukuran DOM: `scrollWidth: 390, clientWidth: 390` (100% Zero Overflow).
+     - Tombol `#mobile-menu-btn` aktif, responsif, dan saat diklik membuka drawer menu dengan highlight otomatis pada item aktif "Leaderboard & Hall of Fame".
+     - Screenshot live tersimpan di:
+       - `docs/screenshots/live_vps_leaderboard_mobile.png`
+       - `docs/screenshots/live_vps_menu_open_mobile.png`
