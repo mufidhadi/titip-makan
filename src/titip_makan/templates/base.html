@@ -12,30 +12,96 @@
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col">
-    <!-- Navigation Bar -->
-    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
-        <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-            <a href="/" class="flex items-center space-x-2">
-                <span class="text-2xl">🍜</span>
-                <div>
-                    <h1 class="font-bold text-lg leading-tight text-slate-800">Titip Makan</h1>
-                    <p class="text-xs text-slate-500 font-medium">MTN CORE Internal Order</p>
+<body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col overflow-x-hidden">
+    <!-- Top Navigation Bar -->
+    <header class="bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+        <div class="max-w-4xl mx-auto px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between gap-2">
+            <!-- Brand / Logo -->
+            <a href="/" class="flex items-center space-x-2.5 min-w-0 group" aria-label="Beranda Titip Makan">
+                <span class="text-2xl sm:text-3xl flex-none transform group-hover:scale-105 transition-transform">🍜</span>
+                <div class="min-w-0">
+                    <h1 class="font-extrabold text-base sm:text-lg leading-tight text-slate-800 truncate tracking-tight">Titip Makan</h1>
+                    <p class="text-[11px] sm:text-xs text-slate-500 font-medium truncate">MTN CORE Internal Order</p>
                 </div>
             </a>
-            <div class="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm font-medium">
-                <a href="/" class="px-2.5 py-1.5 rounded-lg hover:bg-slate-100 text-slate-700 transition">Pesan Makan</a>
-                <a href="/history" class="px-2.5 py-1.5 rounded-lg hover:bg-slate-100 text-slate-700 transition flex items-center gap-1">
-                    <span>📊</span> <span class="hidden sm:inline">Riwayat &</span> Analitik
+
+            <!-- Desktop Navigation Menu (Visible on md and above) -->
+            <nav class="hidden md:flex items-center space-x-1 sm:space-x-1.5 text-xs sm:text-sm font-medium flex-none" aria-label="Navigasi Utama">
+                <a href="/" id="nav-pesan" class="nav-item px-3 py-1.5 rounded-lg hover:bg-slate-100 text-slate-700 transition flex items-center gap-1.5">
+                    <span>🍜</span> <span>Pesan Makan</span>
                 </a>
-                <a href="/leaderboard" class="px-2.5 py-1.5 rounded-lg hover:bg-slate-100 text-slate-700 transition flex items-center gap-1">
-                    <span>🏆</span> Leaderboard
+                <a href="/history" id="nav-history" class="nav-item px-3 py-1.5 rounded-lg hover:bg-slate-100 text-slate-700 transition flex items-center gap-1.5">
+                    <span>📊</span> <span>Riwayat & Analitik</span>
                 </a>
-                <a href="/coordinator" class="px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition flex items-center gap-1">
-                    <span>👑</span> Koordinator
+                <a href="/leaderboard" id="nav-leaderboard" class="nav-item px-3 py-1.5 rounded-lg hover:bg-slate-100 text-slate-700 transition flex items-center gap-1.5">
+                    <span>🏆</span> <span>Leaderboard</span>
                 </a>
+                <a href="/coordinator" id="nav-coordinator" class="nav-item px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition flex items-center gap-1.5 font-semibold">
+                    <span>👑</span> <span>Koordinator</span>
+                </a>
+            </nav>
+
+            <!-- Mobile Hamburger Toggle Button (Visible on screens < md) -->
+            <div class="flex items-center md:hidden flex-none">
+                <button id="mobile-menu-btn" type="button" class="inline-flex items-center justify-center p-2 rounded-xl text-slate-700 hover:text-slate-900 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors" aria-label="Buka Menu Navigasi" aria-expanded="false" aria-controls="mobile-menu">
+                    <!-- Hamburger 3-bar icon -->
+                    <svg id="menu-icon-bars" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                    <!-- Close (X) icon -->
+                    <svg id="menu-icon-close" class="w-6 h-6 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
             </div>
         </div>
+
+        <!-- Collapsible Mobile Navigation Menu -->
+        <nav id="mobile-menu" class="hidden md:hidden border-t border-slate-100 bg-white/95 backdrop-blur-md px-3 sm:px-4 py-2 space-y-1.5 shadow-lg transition-all" aria-label="Navigasi Mobile">
+            <a href="/" class="mobile-nav-item flex items-center justify-between p-2.5 rounded-xl text-slate-700 hover:bg-slate-100 active:bg-slate-200 transition">
+                <div class="flex items-center gap-3">
+                    <span class="text-xl p-1.5 bg-slate-100 rounded-lg">🍜</span>
+                    <div>
+                        <div class="font-bold text-sm text-slate-800">Pesan Makan</div>
+                        <div class="text-[11px] text-slate-500">Pilih menu & kirim pesanan aktif</div>
+                    </div>
+                </div>
+                <span class="text-slate-400 text-sm font-bold">›</span>
+            </a>
+
+            <a href="/history" class="mobile-nav-item flex items-center justify-between p-2.5 rounded-xl text-slate-700 hover:bg-slate-100 active:bg-slate-200 transition">
+                <div class="flex items-center gap-3">
+                    <span class="text-xl p-1.5 bg-slate-100 rounded-lg">📊</span>
+                    <div>
+                        <div class="font-bold text-sm text-slate-800">Riwayat & Analitik</div>
+                        <div class="text-[11px] text-slate-500">Statistik pengeluaran & arsip sesi</div>
+                    </div>
+                </div>
+                <span class="text-slate-400 text-sm font-bold">›</span>
+            </a>
+
+            <a href="/leaderboard" class="mobile-nav-item flex items-center justify-between p-2.5 rounded-xl text-slate-700 hover:bg-slate-100 active:bg-slate-200 transition">
+                <div class="flex items-center gap-3">
+                    <span class="text-xl p-1.5 bg-slate-100 rounded-lg">🏆</span>
+                    <div>
+                        <div class="font-bold text-sm text-slate-800">Leaderboard & Hall of Fame</div>
+                        <div class="text-[11px] text-slate-500">Ranking Sultan & apresiasi tim</div>
+                    </div>
+                </div>
+                <span class="text-slate-400 text-sm font-bold">›</span>
+            </a>
+
+            <a href="/coordinator" class="mobile-nav-item flex items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-800 hover:from-indigo-100 hover:to-purple-100 border border-indigo-100/80 transition">
+                <div class="flex items-center gap-3">
+                    <span class="text-xl p-1.5 bg-indigo-100 text-indigo-700 rounded-lg shadow-xs">👑</span>
+                    <div>
+                        <div class="font-bold text-sm text-indigo-950">Panel Koordinator</div>
+                        <div class="text-[11px] text-indigo-600">Buka/tutup sesi, hitung & set lunas</div>
+                    </div>
+                </div>
+                <span class="text-indigo-400 text-sm font-bold">›</span>
+            </a>
+        </nav>
     </header>
 
     <!-- Main Content -->
@@ -73,6 +139,7 @@
             }, 3000);
         }
     </script>
+    <script src="/static/js/nav.js"></script>
 
     {% block scripts %}{% endblock %}
 </body>
