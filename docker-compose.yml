@@ -6,14 +6,24 @@ services:
     container_name: titip_makan_app
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "${PORT_BIND:-8080}:8080"
     env_file:
       - .env
     volumes:
       - ./data:/app/data
-    healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8080/api/health')\""]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 5s
+    networks:
+      - default
+      - web_proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=web_proxy"
+      - "traefik.http.routers.titip-irzi.rule=Host(`titip-irzi.masmuf.cloud`)"
+      - "traefik.http.routers.titip-irzi.entrypoints=websecure"
+      - "traefik.http.routers.titip-irzi.tls.certresolver=myresolver"
+      - "traefik.http.services.titip-irzi.loadbalancer.server.port=8080"
+
+networks:
+  default:
+  web_proxy:
+    external: true
+

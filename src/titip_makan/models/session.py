@@ -8,10 +8,10 @@ class PoolSession(Base):
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     title = Column(String(255), nullable=False)
-    coordinator_name = Column(String(100), nullable=False, default="Zi")
-    coordinator_phone = Column(String(50), nullable=True)
+    coordinator_name = Column(String(100), nullable=False, default="Irzi")
+    coordinator_phone = Column(String(50), nullable=True, default="+62 815-1382-5480")
     vendor_options = Column(Text, nullable=False, default="[]")  # JSON string of vendor list
-    payment_info = Column(Text, nullable=True)
+    payment_info = Column(Text, nullable=True, default="gopay ke +62 815-1382-5480")
     status = Column(String(20), nullable=False, default="OPEN")  # OPEN, CLOSED
     cutoff_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)

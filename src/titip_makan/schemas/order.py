@@ -27,6 +27,7 @@ class OrderOut(BaseModel):
     notes: Optional[str] = ""
     price: int
     is_paid: bool
+    payment_status: str = "UNPAID"
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -36,10 +37,17 @@ class OrderOut(BaseModel):
         return serialize_utc(dt)
 
 class OrderPaymentUpdate(BaseModel):
-    is_paid: bool
+    is_paid: Optional[bool] = None
+    payment_status: Optional[str] = None
 
 class OrderPriceUpdate(BaseModel):
     price: int = Field(..., ge=0, description="Harga yang diisi/diperbarui oleh koordinator")
+
+class OrderUpdate(BaseModel):
+    vendor: Optional[str] = None
+    item_name: Optional[str] = None
+    notes: Optional[str] = None
+    price: Optional[int] = Field(default=None, ge=0)
 
 class AggregatedItem(BaseModel):
     vendor: str
@@ -48,6 +56,14 @@ class AggregatedItem(BaseModel):
     quantity: int
     subtotal: int
     notes_list: List[str] = Field(default_factory=list)
+
+class UnpaidUserItem(BaseModel):
+    order_id: int
+    user_name: str
+    item_name: str
+    vendor: str
+    price: int
+    payment_status: str
 
 class SessionSummary(BaseModel):
     session_id: int
@@ -59,4 +75,5 @@ class SessionSummary(BaseModel):
     total_unpaid_count: int
     aggregated_items: List[AggregatedItem]
     orders: List[OrderOut]
+    unpaid_orders_users: List[UnpaidUserItem] = Field(default_factory=list)
     whatsapp_recap_text: str

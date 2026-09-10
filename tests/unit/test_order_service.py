@@ -88,9 +88,9 @@ async def test_order_aggregation_summary(db_session):
     assert summary.total_orders == 4
     assert summary.total_amount == 67000
     
-    # Check item aggregation: "Mie Ayam - Pangsit Rebus" should be 2
-    rebus_item = next(i for i in summary.aggregated_items if i.item_name == "Mie Ayam" and i.variant == "Pangsit Rebus")
-    assert rebus_item.quantity == 2
+    # Check item aggregation: "Mie Ayam" should be 3 total
+    mie_ayam_item = next(i for i in summary.aggregated_items if i.item_name == "Mie Ayam")
+    assert mie_ayam_item.quantity == 3
 
     # Check WA formatted text recap generation
     assert "Rekap Titip Makan" in summary.whatsapp_recap_text
@@ -174,9 +174,9 @@ async def test_custom_tenant_and_variant_order(db_session):
     summary = await order_service.get_session_summary(session.id)
     assert summary.total_orders == 1
     assert summary.total_amount == 45000
-    assert any(i.vendor == "Sate Khas Senayan" and i.variant == "Bumbu Kacang + Lontong" for i in summary.aggregated_items)
+    assert any(i.vendor == "Sate Khas Senayan" and i.item_name == "Sate Kambing Campur" for i in summary.aggregated_items)
     assert "Sate Khas Senayan" in summary.whatsapp_recap_text
-    assert "Bumbu Kacang + Lontong" in summary.whatsapp_recap_text
+    assert "bawang goreng banyakin" in summary.whatsapp_recap_text
 
 @pytest.mark.asyncio
 async def test_optional_order_price_and_coordinator_update(db_session):
@@ -240,7 +240,74 @@ async def test_get_suggestions_includes_newly_ordered_tenants_and_menus(db_sessi
     suggestions = await order_service.get_suggestions(session.id)
     assert "Kue Balok Kang Ismet" in suggestions["tenants"]
     assert "Kue Balok Coklat Lumer" in suggestions["menus"]["Kue Balok Kang Ismet"]
-    assert "Setengah Matang" in suggestions["variants"]["Kue Balok Kang Ismet"]
+
+@pytest.mark.asyncio
+async def test_get_suggestions_includes_master_catalog_with_prices(db_session):
+    order_service = OrderService(db_session)
+    suggestions = await order_service.get_suggestions(None)
+    
+    # Verify tenants
+    assert "Babun" in suggestions["tenants"]
+    assert "Mie Ayam" in suggestions["tenants"]
+    assert "Buah Potong" in suggestions["tenants"]
+    
+    # Verify menus
+    assert "Babun Nasi Telor Dobel" in suggestions["menus"]["Babun"]
+    assert "Babun Nasi Ayam Kremes" in suggestions["menus"]["Babun"]
+    assert "Mie Ayam Pangsit Rebus" in suggestions["menus"]["Mie Ayam"]
+    assert "Buah Potong Semangka" in suggestions["menus"]["Buah Potong"]
+    
+    # Verify prices mapping
+    assert "prices" in suggestions
+    assert suggestions["prices"]["Babun Nasi Telor Dobel"] == 13000
+    assert suggestions["prices"]["Babun Nasi Ayam Kremes"] == 22000
+    assert suggestions["prices"]["Mie Ayam Pangsit Rebus"] == 15000
+    assert suggestions["prices"]["Buah Potong Semangka"] == 5000
+
+
+@pytest.mark.asyncio
+async def test_order_without_variant_and_clean_aggregation(db_session):
+    session_service = SessionService(db_session)
+    order_service = OrderService(db_session)
+
+    session = await session_service.create_session(
+        SessionCreate(
+            title="Titip Makan Siang",
+            coordinator_name="Zi",
+            vendor_options=["Mie Ayam"],
+            cutoff_minutes=60
+        )
+    )
+
+    # Order without any variant
+    await order_service.create_order(
+        session.id,
+        OrderCreate(
+            user_name="Amal",
+            vendor="Mie Ayam",
+            item_name="Mie Ayam Spesial",
+            notes="tanpa sawi",
+            price=18000
+        )
+    )
+    await order_service.create_order(
+        session.id,
+        OrderCreate(
+            user_name="Mufid",
+            vendor="Mie Ayam",
+            item_name="Mie Ayam Spesial",
+            notes="kuah banyak",
+            price=18000
+        )
+    )
+
+    summary = await order_service.get_session_summary(session.id)
+    assert summary.total_orders == 2
+    assert summary.total_amount == 36000
+    item = next(i for i in summary.aggregated_items if i.item_name == "Mie Ayam Spesial")
+    assert "[Mie Ayam]" in summary.whatsapp_recap_text
+    assert "2x Mie Ayam Spesial - Rp 36.000" in summary.whatsapp_recap_text
+
 
 
 

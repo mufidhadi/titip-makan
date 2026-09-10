@@ -1,7 +1,8 @@
 import json
 from typing import Optional, List
 from datetime import datetime, timezone
-from sqlalchemy import select, update
+from sqlalchemy import select, update, func
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from titip_makan.models.session import PoolSession
 
@@ -41,12 +42,18 @@ class SessionRepository:
         return session
 
     async def get_by_id(self, session_id: int) -> Optional[PoolSession]:
-        result = await self.db.execute(select(PoolSession).where(PoolSession.id == session_id))
+        result = await self.db.execute(
+            select(PoolSession)
+            .options(selectinload(PoolSession.orders))
+            .where(PoolSession.id == session_id)
+        )
         return result.scalars().first()
 
     async def get_latest(self) -> Optional[PoolSession]:
         result = await self.db.execute(
-            select(PoolSession).order_by(PoolSession.id.desc())
+            select(PoolSession)
+            .options(selectinload(PoolSession.orders))
+            .order_by(PoolSession.id.desc())
         )
         return result.scalars().first()
 
@@ -66,3 +73,36 @@ class SessionRepository:
             await self.db.commit()
             await self.db.refresh(session)
         return session
+
+    async def update_cutoff(self, session_id: int, cutoff_at: Optional[datetime]) -> Optional[PoolSession]:
+        session = await self.get_by_id(session_id)
+        if session:
+            session.cutoff_at = cutoff_at
+            await self.db.commit()
+            await self.db.refresh(session)
+        return session
+
+    async def get_all_history(self) -> List[PoolSession]:
+        result = await self.db.execute(
+            select(PoolSession)
+            .options(selectinload(PoolSession.orders))
+            .order_by(PoolSession.created_at.desc())
+        )
+        return list(result.scalars().all())
+
+    async def count_all_history(self) -> int:
+        result = await self.db.execute(
+            select(func.count(PoolSession.id))
+        )
+        return result.scalar() or 0
+
+    async def get_paginated_history(self, limit: int, offset: int) -> List[PoolSession]:
+        result = await self.db.execute(
+            select(PoolSession)
+            .options(selectinload(PoolSession.orders))
+            .order_by(PoolSession.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        return list(result.scalars().all())
+

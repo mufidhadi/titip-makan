@@ -1,9 +1,9 @@
-from typing import Optional, List
-from fastapi import APIRouter, Depends, HTTPException, Header, status
+from typing import Optional, List, Union
+from fastapi import APIRouter, Depends, HTTPException, Header, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from titip_makan.core.database import get_db
 from titip_makan.core.config import settings
-from titip_makan.schemas.session import SessionCreate, SessionOut
+from titip_makan.schemas.session import SessionCreate, SessionOut, SessionCutoffUpdate, PaginatedSessions
 from titip_makan.schemas.order import SessionSummary, OrderCreate, OrderOut
 from titip_makan.services.session_service import SessionService
 from titip_makan.services.order_service import OrderService
@@ -24,6 +24,20 @@ async def get_active_session(db: AsyncSession = Depends(get_db)):
 async def get_latest_session(db: AsyncSession = Depends(get_db)):
     service = SessionService(db)
     return await service.get_latest_session()
+
+@router.get("/history", response_model=Union[PaginatedSessions, List[SessionOut]])
+async def get_sessions_history(
+    page: Optional[int] = Query(None, ge=1, description="Nomor halaman (1-indexed)"),
+    limit: Optional[int] = Query(None, ge=1, le=100, description="Jumlah item per halaman"),
+    all: bool = Query(False, description="Jika true, kembalikan seluruh riwayat tanpa paginasi"),
+    db: AsyncSession = Depends(get_db)
+):
+    service = SessionService(db)
+    if all:
+        return await service.get_history()
+    p = page if page is not None else 1
+    l = limit if limit is not None else 10
+    return await service.get_paginated_history(page=p, limit=l)
 
 @router.get("/suggestions")
 async def get_general_suggestions(db: AsyncSession = Depends(get_db)):
@@ -54,6 +68,35 @@ async def close_session(
     service = SessionService(db)
     try:
         return await service.close_session(session_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+@router.patch("/{session_id}/cutoff", response_model=SessionOut)
+async def update_cutoff(
+    session_id: int,
+    data: SessionCutoffUpdate,
+    x_coordinator_pin: Optional[str] = Header(None),
+    db: AsyncSession = Depends(get_db)
+):
+    if settings.coordinator_pin and x_coordinator_pin != settings.coordinator_pin:
+        raise HTTPException(status_code=403, detail="Invalid coordinator PIN")
+    service = SessionService(db)
+    try:
+        return await service.update_cutoff(session_id, extend_minutes=data.extend_minutes, close_now=data.close_now or False)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+@router.post("/{session_id}/broadcast")
+async def broadcast_session_announcement(
+    session_id: int,
+    x_coordinator_pin: Optional[str] = Header(None),
+    db: AsyncSession = Depends(get_db)
+):
+    if settings.coordinator_pin and x_coordinator_pin != settings.coordinator_pin:
+        raise HTTPException(status_code=403, detail="Invalid coordinator PIN")
+    service = SessionService(db)
+    try:
+        return await service.broadcast_session(session_id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 

@@ -30,3 +30,19 @@ async def coordinator_view(request: Request, db: AsyncSession = Depends(get_db))
         name="coordinator.html",
         context={"session": active_session}
     )
+
+@router.get("/history", response_class=HTMLResponse)
+async def history_view(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="history.html",
+        context={}
+    )
+
+@router.get("/leaderboard", response_class=HTMLResponse)
+async def leaderboard_view(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="leaderboard.html",
+        context={}
+    )

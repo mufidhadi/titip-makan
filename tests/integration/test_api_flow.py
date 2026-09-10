@@ -74,6 +74,14 @@ async def test_full_titip_makan_api_lifecycle(db_session):
         assert summary["total_unpaid_count"] == 1
         assert "Rekap Titip Makan" in summary["whatsapp_recap_text"]
 
+        # 6b. Test broadcast endpoint with PIN validation
+        bad_broadcast = await client.post(f"/api/v1/sessions/{session_id}/broadcast", headers={"X-Coordinator-Pin": "wrong"})
+        assert bad_broadcast.status_code == 403
+
+        good_broadcast = await client.post(f"/api/v1/sessions/{session_id}/broadcast", headers={"X-Coordinator-Pin": "1234"})
+        assert good_broadcast.status_code == 200
+        assert good_broadcast.json()["status"] in ["skipped", "success"]
+
         # 7. Close session (requires coordinator pin)
         resp = await client.post(f"/api/v1/sessions/{session_id}/close", headers={"X-Coordinator-Pin": "1234"})
         assert resp.status_code == 200
@@ -131,6 +139,27 @@ async def test_order_price_update_and_suggestions_api(db_session):
         data = sugg_resp.json()
         assert "Bebek Kaleyo" in data["tenants"]
         assert "Bebek Goreng Kremes" in data["menus"]["Bebek Kaleyo"]
+
+        # Verify paginated history endpoint
+        hist_resp = await client.get("/api/v1/sessions/history?page=1&limit=10")
+        assert hist_resp.status_code == 200
+        hist_data = hist_resp.json()
+        assert "items" in hist_data
+        assert hist_data["total"] >= 1
+        assert hist_data["page"] == 1
+        assert hist_data["limit"] == 10
+        assert hist_data["total_pages"] >= 1
+        target_hist = next((s for s in hist_data["items"] if s["id"] == session_id), None)
+        assert target_hist is not None
+        assert len(target_hist["orders"]) == 1
+        assert target_hist["orders"][0]["user_name"] == "Amal"
+        assert target_hist["orders"][0]["vendor"] == "Bebek Kaleyo"
+
+        # Verify unpaginated history when all=true
+        hist_all = await client.get("/api/v1/sessions/history?all=true")
+        assert hist_all.status_code == 200
+        assert isinstance(hist_all.json(), list)
+        assert len(hist_all.json()) >= 1
 
     app.dependency_overrides.clear()
 

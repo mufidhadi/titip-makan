@@ -1,6 +1,12 @@
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from titip_makan.core.database import Base
+from titip_makan.core.config import settings
+import titip_makan.models.session  # noqa: F401
+import titip_makan.models.order    # noqa: F401
+
+# Disable real WhatsApp notifications in automated tests
+settings.waha_notify_group = False
 
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 

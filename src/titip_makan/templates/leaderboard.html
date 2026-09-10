@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}Leaderboard & Hall of Fame - Titip Makan{% endblock %}
+
+{% block content %}
+<div class="space-y-6 pb-12">
+    <!-- Header Hero Banner -->
+    <div class="bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 rounded-3xl p-6 text-white shadow-lg relative overflow-hidden">
+        <div class="relative z-10 max-w-xl">
+            <span class="px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-bold uppercase tracking-wider">
+                🏆 Hall of Fame MTN CORE
+            </span>
+            <h2 class="text-2xl sm:text-3xl font-extrabold mt-2 leading-tight">
+                Leaderboard & Gelar Kehormatan Titip Makan
+            </h2>
+            <p class="text-xs sm:text-sm text-white/90 mt-1">
+                Apresiasi santai penuh tawa untuk rekan-rekan pejuang makan siang kantor. Siapakah yang menjadi Sultan hari ini?
+            </p>
+        </div>
+        <div class="hidden sm:block absolute right-6 -bottom-4 text-7xl opacity-90 select-none">
+            👑
+        </div>
+    </div>
+
+    <!-- Section: Gamified Badges Grid -->
+    <div>
+        <div class="flex items-center justify-between mb-3 px-1">
+            <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                <span>🎖️</span> Gelar Kehormatan & Badges
+            </h3>
+            <span class="text-xs text-slate-400">Otomatis terupdate dari pesanan riil</span>
+        </div>
+        
+        <div id="badges-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            <!-- Rendered by leaderboard.js -->
+            <div class="col-span-full py-8 text-center text-slate-400 text-xs">
+                Memuat data badges...
+            </div>
+        </div>
+    </div>
+
+    <!-- Section: Full Rankings Table -->
+    <div class="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div class="flex items-center justify-between">
+            <div>
+                <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                    <span>🏅</span> Peringkat & Statistik Anggota
+                </h3>
+                <p class="text-xs text-slate-500">Berdasarkan total kontribusi dan keaktifan titip makan</p>
+            </div>
+            <button id="btn-refresh-leaderboard" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition flex items-center gap-1">
+                <span>🔄</span> Segarkan
+            </button>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-xs">
+                <thead>
+                    <tr class="border-b border-slate-200 bg-slate-50 text-slate-600 font-semibold">
+                        <th class="py-3 px-3 w-12 text-center">Rank</th>
+                        <th class="py-3 px-3">Nama Anggota</th>
+                        <th class="py-3 px-3">Gelar / Badges</th>
+                        <th class="py-3 px-3 text-right">Total Belanja</th>
+                        <th class="py-3 px-3 text-center">Jumlah Order</th>
+                        <th class="py-3 px-3 text-center">Catatan</th>
+                        <th class="py-3 px-3 text-center">Menu Unik</th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboard-tbody" class="divide-y divide-slate-100">
+                    <tr>
+                        <td colspan="7" class="text-center py-8 text-slate-400">Memuat data peringkat...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/leaderboard.js"></script>
+{% endblock %}
