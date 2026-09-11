@@ -157,3 +157,106 @@ async def test_tenant_avoid_last_treats_open_session_past_cutoff_as_finished(db_
 
     assert result.avoid_last_applied is True
     assert result.excluded_last_tenants == ["Babun"]
+
+
+from titip_makan.services.wheel_service import NoActiveSessionError, InvalidTenantError
+
+
+@pytest.mark.asyncio
+async def test_item_candidates_without_active_session_raises(db_session):
+    service = WheelService(db_session)
+    with pytest.raises(NoActiveSessionError):
+        await service.get_item_candidates()
+
+
+async def _open_session_with_vendors(db_session, vendor_options):
+    session_service = SessionService(db_session)
+    return await session_service.create_session(
+        SessionCreate(
+            title="Sesi Aktif",
+            coordinator_name="Zi",
+            vendor_options=vendor_options,
+            cutoff_minutes=30,
+        )
+    )
+
+
+@pytest.mark.asyncio
+async def test_item_candidates_vendors_is_intersection_with_catalog(db_session):
+    await _open_session_with_vendors(
+        db_session, ["Mie Ayam", "Babun", "Nasi Goreng", "Dimsum"]
+    )
+
+    service = WheelService(db_session)
+    result = await service.get_item_candidates(main_only=False)
+
+    assert result.mode == "item"
+    assert result.vendors == ["Mie Ayam", "Babun"]
+    assert all(c.vendor in ("Mie Ayam", "Babun") for c in result.candidates)
+
+
+@pytest.mark.asyncio
+async def test_item_candidates_tenant_filter_valid(db_session):
+    await _open_session_with_vendors(db_session, ["Mie Ayam", "Babun"])
+
+    service = WheelService(db_session)
+    result = await service.get_item_candidates(tenant="babun", main_only=False)
+
+    assert result.vendors == ["Mie Ayam", "Babun"]
+    assert len(result.candidates) == len(MASTER_CATALOG["Babun"])
+    assert all(c.vendor == "Babun" for c in result.candidates)
+
+
+@pytest.mark.asyncio
+async def test_item_candidates_tenant_filter_invalid_raises(db_session):
+    await _open_session_with_vendors(db_session, ["Mie Ayam", "Babun", "Dimsum"])
+
+    service = WheelService(db_session)
+    with pytest.raises(InvalidTenantError):
+        await service.get_item_candidates(tenant="Dimsum")
+
+
+@pytest.mark.asyncio
+async def test_item_candidates_max_price_inclusive(db_session):
+    await _open_session_with_vendors(db_session, ["Babun"])
+
+    service = WheelService(db_session)
+    result = await service.get_item_candidates(tenant="Babun", main_only=False, max_price=10000)
+
+    labels = [c.label for c in result.candidates]
+    assert "Babun Omelette" in labels  # exactly 10000, inclusive boundary
+    assert all(c.price <= 10000 for c in result.candidates)
+    assert "Babun Nasi Telor Dobel" not in labels  # 13000, over the limit
+
+
+@pytest.mark.asyncio
+async def test_item_candidates_main_only_excludes_below_threshold_keeps_exact_threshold(db_session):
+    await _open_session_with_vendors(db_session, ["Babun"])
+
+    service = WheelService(db_session)
+    result = await service.get_item_candidates(tenant="Babun", main_only=True)
+
+    labels = [c.label for c in result.candidates]
+    assert "Babun Omelette" in labels  # exactly MAIN_DISH_MIN_PRICE, kept
+    assert "Babun Es Teh Manis" not in labels  # 5000, excluded
+    assert all(c.price >= 10000 for c in result.candidates)
+
+
+@pytest.mark.asyncio
+async def test_item_candidates_main_only_false_keeps_all(db_session):
+    await _open_session_with_vendors(db_session, ["Babun"])
+
+    service = WheelService(db_session)
+    result = await service.get_item_candidates(tenant="Babun", main_only=False)
+
+    assert len(result.candidates) == len(MASTER_CATALOG["Babun"])
+
+
+@pytest.mark.asyncio
+async def test_item_candidates_empty_when_no_matching_items(db_session):
+    await _open_session_with_vendors(db_session, ["Buah Potong"])
+
+    service = WheelService(db_session)
+    result = await service.get_item_candidates(tenant="Buah Potong", main_only=True)
+
+    assert result.candidates == []
