@@ -33,3 +33,127 @@ async def test_repository_get_latest_finished_picks_correct_session(db_session):
 
     assert result is not None
     assert result.id == open_past_cutoff.id
+
+
+from titip_makan.services.wheel_service import WheelService
+from titip_makan.core.catalog import MASTER_CATALOG
+
+
+@pytest.mark.asyncio
+async def test_tenant_candidates_are_catalog_keys_sorted_alphabetically(db_session):
+    service = WheelService(db_session)
+    result = await service.get_tenant_candidates()
+
+    assert result.mode == "tenant"
+    assert [c.label for c in result.candidates] == sorted(MASTER_CATALOG.keys())
+    assert all(c.vendor == c.label for c in result.candidates)
+    assert all(c.price is None for c in result.candidates)
+    assert result.avoid_last_applied is False
+    assert result.excluded_last_tenants == []
+
+
+@pytest.mark.asyncio
+async def test_tenant_avoid_last_no_history_has_no_effect(db_session):
+    service = WheelService(db_session)
+    result = await service.get_tenant_candidates(avoid_last=True)
+
+    assert [c.label for c in result.candidates] == sorted(MASTER_CATALOG.keys())
+    assert result.avoid_last_applied is False
+    assert result.excluded_last_tenants == []
+
+
+async def _finish_session_with_orders(db_session, vendor_counts: dict) -> int:
+    session_service = SessionService(db_session)
+    order_service = OrderService(db_session)
+
+    session = await session_service.create_session(
+        SessionCreate(title="Sesi Kemarin", coordinator_name="Zi", cutoff_minutes=30)
+    )
+    n = 0
+    for vendor, count in vendor_counts.items():
+        for _ in range(count):
+            n += 1
+            await order_service.create_order(
+                session.id,
+                OrderCreate(user_name=f"User{n}", vendor=vendor, item_name="Item", price=10000)
+            )
+    await session_service.close_session(session.id)
+    return session.id
+
+
+@pytest.mark.asyncio
+async def test_tenant_avoid_last_excludes_top_vendor(db_session):
+    await _finish_session_with_orders(db_session, {"Babun": 2, "Mie Ayam": 1})
+
+    service = WheelService(db_session)
+    result = await service.get_tenant_candidates(avoid_last=True)
+
+    assert result.avoid_last_applied is True
+    assert result.excluded_last_tenants == ["Babun"]
+    assert "Babun" not in [c.label for c in result.candidates]
+    assert "Mie Ayam" in [c.label for c in result.candidates]
+
+
+@pytest.mark.asyncio
+async def test_tenant_avoid_last_tie_excludes_all_tied_vendors(db_session):
+    await _finish_session_with_orders(db_session, {"Babun": 2, "Mie Ayam": 2, "Buah Potong": 1})
+
+    service = WheelService(db_session)
+    result = await service.get_tenant_candidates(avoid_last=True)
+
+    assert result.avoid_last_applied is True
+    assert set(result.excluded_last_tenants) == {"Babun", "Mie Ayam"}
+    remaining = [c.label for c in result.candidates]
+    assert "Babun" not in remaining
+    assert "Mie Ayam" not in remaining
+    assert "Buah Potong" in remaining
+    assert "Kantin" in remaining
+
+
+@pytest.mark.asyncio
+async def test_tenant_avoid_last_case_insensitive_vendor_match(db_session):
+    await _finish_session_with_orders(db_session, {"  babun  ": 3, "Mie Ayam": 1})
+
+    service = WheelService(db_session)
+    result = await service.get_tenant_candidates(avoid_last=True)
+
+    assert result.excluded_last_tenants == ["Babun"]
+    assert "Babun" not in [c.label for c in result.candidates]
+
+
+@pytest.mark.asyncio
+async def test_tenant_avoid_last_fallback_when_all_excluded(db_session):
+    # One order per catalog vendor -> 4-way tie -> excluding all would empty the list -> fallback
+    await _finish_session_with_orders(
+        db_session, {vendor: 1 for vendor in MASTER_CATALOG.keys()}
+    )
+
+    service = WheelService(db_session)
+    result = await service.get_tenant_candidates(avoid_last=True)
+
+    assert result.avoid_last_applied is False
+    assert result.excluded_last_tenants == []
+    assert [c.label for c in result.candidates] == sorted(MASTER_CATALOG.keys())
+
+
+@pytest.mark.asyncio
+async def test_tenant_avoid_last_treats_open_session_past_cutoff_as_finished(db_session):
+    session_service = SessionService(db_session)
+    order_service = OrderService(db_session)
+
+    session = await session_service.create_session(
+        SessionCreate(title="Sesi Lewat Cutoff", coordinator_name="Zi", cutoff_minutes=30)
+    )
+    await order_service.create_order(
+        session.id, OrderCreate(user_name="Amal", vendor="Babun", item_name="Item", price=10000)
+    )
+    # Push cutoff into the past directly via the repository (bypassing order_service's
+    # lazy-close-on-write path) so the session stays "OPEN" in the DB with an expired cutoff.
+    past_cutoff = datetime.now(timezone.utc) - timedelta(minutes=5)
+    await SessionRepository(db_session).update_cutoff(session.id, past_cutoff)
+
+    service = WheelService(db_session)
+    result = await service.get_tenant_candidates(avoid_last=True)
+
+    assert result.avoid_last_applied is True
+    assert result.excluded_last_tenants == ["Babun"]
