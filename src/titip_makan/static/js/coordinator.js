@@ -312,6 +312,18 @@ function setupEventListeners() {
         });
     }
 
+    const wheelOpenTenantBtn = document.getElementById("wheel-open-tenant");
+    if (wheelOpenTenantBtn) {
+        wheelOpenTenantBtn.addEventListener("click", () => {
+            window.MenuWheel.open({
+                mode: "tenant",
+                onApply: (candidate) => {
+                    document.getElementById("cs-vendors").value = candidate.label;
+                }
+            });
+        });
+    }
+
     // Create session form
     document.getElementById("create-session-form").addEventListener("submit", async (e) => {
         e.preventDefault();
