@@ -29,6 +29,10 @@ class WheelService:
         self.session_service = SessionService(db)
 
     async def get_tenant_candidates(self, avoid_last: bool = False) -> WheelCandidates:
+        # avoid_last semantics on a tie: if multiple vendors share the top order
+        # count in the last finished session, ALL of them are excluded (not just
+        # one). This is intentional per spec section 3.3 ("Kalau seri, semua
+        # vendor yang seri ikut") — see test_tenant_avoid_last_tie_excludes_all_tied_vendors.
         vendor_names = sorted(MASTER_CATALOG.keys())
         candidates = [
             WheelCandidate(label=name, vendor=name, price=None) for name in vendor_names
