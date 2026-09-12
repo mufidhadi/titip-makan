@@ -36,8 +36,8 @@ async def get_sessions_history(
     if all:
         return await service.get_history()
     p = page if page is not None else 1
-    l = limit if limit is not None else 10
-    return await service.get_paginated_history(page=p, limit=l)
+    page_size = limit if limit is not None else 10
+    return await service.get_paginated_history(page=p, limit=page_size)
 
 @router.get("/suggestions")
 async def get_general_suggestions(db: AsyncSession = Depends(get_db)):

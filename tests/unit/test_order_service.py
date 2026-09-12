@@ -1,5 +1,4 @@
 import pytest
-from datetime import datetime, timedelta, timezone
 from titip_makan.services.session_service import SessionService
 from titip_makan.services.order_service import OrderService
 from titip_makan.schemas.session import SessionCreate
@@ -21,7 +20,7 @@ async def test_create_order_atomic(db_session):
     )
 
     # Amal orders Mie Ayam Pangsit Rebus
-    order1 = await order_service.create_order(
+    await order_service.create_order(
         session.id,
         OrderCreate(
             user_name="Amal",
@@ -34,7 +33,7 @@ async def test_create_order_atomic(db_session):
     )
 
     # Shazi orders Babun Nasi Ayam Lada Hitam
-    order2 = await order_service.create_order(
+    await order_service.create_order(
         session.id,
         OrderCreate(
             user_name="Shazi",
@@ -304,7 +303,7 @@ async def test_order_without_variant_and_clean_aggregation(db_session):
     summary = await order_service.get_session_summary(session.id)
     assert summary.total_orders == 2
     assert summary.total_amount == 36000
-    item = next(i for i in summary.aggregated_items if i.item_name == "Mie Ayam Spesial")
+    next(i for i in summary.aggregated_items if i.item_name == "Mie Ayam Spesial")
     assert "[Mie Ayam]" in summary.whatsapp_recap_text
     assert "2x Mie Ayam Spesial - Rp 36.000" in summary.whatsapp_recap_text
 

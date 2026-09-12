@@ -33,6 +33,8 @@ async def test_repository_get_latest_finished_picks_correct_session(db_session):
 
     assert result is not None
     assert result.id == open_past_cutoff.id
+    # Sesi dengan cutoff di masa depan harus DIABAIKAN (belum selesai)
+    assert result.id != open_future_cutoff.id
 
 
 from titip_makan.services.wheel_service import WheelService

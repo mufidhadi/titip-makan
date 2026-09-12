@@ -154,7 +154,10 @@ Tuliskan pesan commit yang deskriptif dan terstruktur:
 
 Sebelum melakukan `git push` dan membuka Pull Request, verifikasi hal-hal berikut:
 
-- [ ] Seluruh unit test berjalan dan lulus 100%: `uv run pytest`
+- [ ] Seluruh unit test berjalan dan lulus 100%: `uv run pytest tests/unit tests/integration`
+- [ ] Lint bersih: `uv run ruff check .`
+- [ ] CI (job `test`) **hijau** — wajib sebelum merge (lihat bagian Trunk-Based)
+- [ ] Branch berumur pendek (idealnya < 1 hari kerja); kalau lebih, pecah jadi PR kecil
 - [ ] Kode baru memiliki unit test yang memadai
 - [ ] Arsitektur kode mematuhi prinsip SOLID dan pola modular
 - [ ] Tidak ada file sensitif/kredensial yang ter-commit (file `.env` atau API keys)
@@ -172,6 +175,24 @@ Sebelum melakukan `git push` dan membuka Pull Request, verifikasi hal-hal beriku
    - Perubahan apa saja yang dilakukan.
    - Bukti pengujian (`pytest` output).
 4. Tunggu review dari maintainer repository.
+
+---
+
+## 🌳 Trunk-Based Development (aturan wajib)
+
+Repo ini memakai **trunk-based development**: `main` adalah **trunk**, dan trunk
+harus **selalu dalam keadaan siap deploy**.
+
+1. **Branch hidup pendek** — idealnya < 1 hari kerja. PR kecil dan sering, bukan satu PR raksasa yang menggantung berhari-hari.
+2. Selalu branch **dari `main` terbaru**; sinkronkan (`git pull --rebase upstream main`) sebelum merge.
+3. **Merge squash saja** → riwayat `main` linear. Branch otomatis dihapus setelah merge.
+4. **CI wajib hijau** sebelum merge (job `test`: `ruff check` + unit + integration).
+5. **Tidak ada push langsung ke `main`** — semua lewat Pull Request, dan hanya maintainer yang boleh merge.
+6. Pekerjaan yang belum selesai tapi harus masuk: pakai **feature flag / default mati**, jangan branch panjang.
+7. **Hotfix** ikut aturan yang sama: branch pendek → PR → CI hijau → merge.
+8. Test **E2E browser tidak dijalankan di CI utama** (berat: butuh Playwright + server hidup). Jalankan lokal sebelum membuka PR yang menyentuh UI, atau tunggu workflow nightly.
+
+**Konsekuensi:** setiap merge ke `main` = siap deploy. Jangan merge PR yang belum kamu yakini jalan di produksi.
 
 ---
 

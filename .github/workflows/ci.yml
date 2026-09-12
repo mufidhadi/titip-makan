@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Least privilege: workflow ini hanya butuh baca kode
+permissions:
+  contents: read
+
+# Batalkan run lama kalau ada push baru di ref yang sama
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Nama job ini yang dipakai sebagai required status check di proteksi branch:
+  # "test". Jangan diganti tanpa memperbarui ruleset `main`.
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      # Action di-pin ke commit SHA (bukan tag) untuk mencegah supply-chain attack
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: astral-sh/setup-uv@38f3f104447c67c051c4a08e39b64a148898af3a # v4
+
+      - name: Sync dependencies (termasuk dev)
+        run: uv sync --group dev
+
+      - name: Lint (ruff)
+        run: uv run ruff check .
+
+      - name: Unit + integration tests
+        run: uv run pytest tests/unit tests/integration -q
+
+# Catatan: test E2E browser (tests/e2e) TIDAK dijalankan di sini karena butuh
+# Playwright + server hidup, dan durasinya tidak cocok untuk gate setiap PR.
+# Rencana: jalankan lewat workflow terjadwal (nightly) — lihat docs/ai_report/020.
