@@ -18,7 +18,9 @@ class SessionCreate(BaseModel):
     cutoff_minutes: Optional[int] = Field(default=30, description="Cutoff duration in minutes from now")
     cutoff_at: Optional[datetime] = Field(default=None, description="Explicit cutoff datetime")
 
-from titip_makan.schemas.order import OrderOut
+# Sengaja ditaruh di sini (bukan di atas) untuk menghindari circular import
+# antara schemas/session.py dan schemas/order.py.
+from titip_makan.schemas.order import OrderOut  # noqa: E402
 
 class SessionOut(BaseModel):
     id: int

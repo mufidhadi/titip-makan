@@ -33,7 +33,23 @@ dev = [
     "playwright>=1.62.0",
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
+    "ruff>=0.9.0",
 ]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+# Ruleset inti: pycodestyle (E) + pyflakes (F). Sengaja tidak mengaktifkan
+# aturan gaya yang lebih agresif agar CI langsung hijau; bisa diperluas nanti.
+select = ["E", "F"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+# File test sengaja menaruh sebagian import setelah setup (sys.path/fixture) —
+# pola lama yang dipertahankan agar tidak menimbulkan churn besar.
+"tests/**" = ["E402"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

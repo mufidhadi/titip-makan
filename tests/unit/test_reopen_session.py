@@ -1,5 +1,5 @@
 import pytest
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from titip_makan.services.session_service import SessionService
 from titip_makan.services.order_service import OrderService
 from titip_makan.schemas.session import SessionCreate
