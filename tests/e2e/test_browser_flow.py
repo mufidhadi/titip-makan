@@ -2,10 +2,9 @@ import os
 import pytest
 from playwright.async_api import async_playwright, expect
 
-BASE_URL = "http://localhost:8080"
-
 @pytest.mark.asyncio
-async def test_full_browser_e2e_journey():
+async def test_full_browser_e2e_journey(live_server):
+    BASE_URL = live_server
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         # Mobile viewport emulation (iPhone 13/14 size: 390 x 844)

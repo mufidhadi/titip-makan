@@ -97,6 +97,17 @@ class SessionRepository:
             await self.db.refresh(session)
         return session
 
+    async def reopen(self, session_id: int, cutoff_at: Optional[datetime] = None) -> Optional[PoolSession]:
+        session = await self.get_by_id(session_id)
+        if session:
+            session.status = "OPEN"
+            session.closed_at = None
+            if cutoff_at is not None:
+                session.cutoff_at = cutoff_at
+            await self.db.commit()
+            await self.db.refresh(session)
+        return session
+
     async def get_all_history(self) -> List[PoolSession]:
         result = await self.db.execute(
             select(PoolSession)

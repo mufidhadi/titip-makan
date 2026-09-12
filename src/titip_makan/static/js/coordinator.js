@@ -39,15 +39,49 @@ async function checkActiveSession() {
 
             const badge = document.getElementById("coord-status-badge");
             const closeBtn = document.getElementById("btn-close-session");
+            const closeCutoffBtn = document.getElementById("btn-close-cutoff-now");
+            const noticeBanner = document.getElementById("coord-closed-notice");
+            const cutoffLabel = document.getElementById("cutoff-label-text");
+            const extend5Btn = document.getElementById("btn-extend-5");
+            const extend10Btn = document.getElementById("btn-extend-10");
+
+            window.previousSessionStatus = window.currentSessionStatus;
+            window.currentSessionStatus = session.status;
 
             if (session.status === "CLOSED") {
                 badge.className = "px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/40";
                 badge.innerText = "SESI SUDAH DITUTUP (SELESAI)";
-                closeBtn.classList.add("hidden");
+                if (closeBtn) closeBtn.classList.add("hidden");
+                if (closeCutoffBtn) closeCutoffBtn.classList.add("hidden");
+                if (noticeBanner) noticeBanner.classList.remove("hidden");
+                if (cutoffLabel) cutoffLabel.innerText = "⏱️ Buka Sementara:";
+                if (extend5Btn) {
+                    extend5Btn.className = "px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white rounded-lg text-xs font-bold transition shadow-xs flex items-center gap-1";
+                    extend5Btn.innerHTML = "<span>🔓</span> +5m";
+                    extend5Btn.title = "Buka sesi sementara selama 5 menit";
+                }
+                if (extend10Btn) {
+                    extend10Btn.className = "px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white rounded-lg text-xs font-bold transition shadow-xs flex items-center gap-1";
+                    extend10Btn.innerHTML = "<span>🔓</span> +10m";
+                    extend10Btn.title = "Buka sesi sementara selama 10 menit";
+                }
             } else {
                 badge.className = "px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40";
                 badge.innerText = "SESI SEDANG BERLANGSUNG";
-                closeBtn.classList.remove("hidden");
+                if (closeBtn) closeBtn.classList.remove("hidden");
+                if (closeCutoffBtn) closeCutoffBtn.classList.remove("hidden");
+                if (noticeBanner) noticeBanner.classList.add("hidden");
+                if (cutoffLabel) cutoffLabel.innerText = "⏱️ Waktu:";
+                if (extend5Btn) {
+                    extend5Btn.className = "px-2 py-1 bg-indigo-700 hover:bg-indigo-600 active:bg-indigo-800 text-white rounded-lg text-xs font-bold transition shadow-xs";
+                    extend5Btn.innerText = "+5m";
+                    extend5Btn.title = "Tambah 5 menit";
+                }
+                if (extend10Btn) {
+                    extend10Btn.className = "px-2 py-1 bg-indigo-700 hover:bg-indigo-600 active:bg-indigo-800 text-white rounded-lg text-xs font-bold transition shadow-xs";
+                    extend10Btn.innerText = "+10m";
+                    extend10Btn.title = "Tambah 10 menit";
+                }
             }
 
             window.coordinatorPhone = session.coordinator_phone || "+62 815-1382-5480";
@@ -372,6 +406,14 @@ function setupEventListeners() {
     if (btnExtend10) {
         btnExtend10.addEventListener("click", () => updateCutoff(10, false));
     }
+    const btnNoticeExtend5 = document.getElementById("btn-notice-extend-5");
+    if (btnNoticeExtend5) {
+        btnNoticeExtend5.addEventListener("click", () => updateCutoff(5, false));
+    }
+    const btnNoticeExtend10 = document.getElementById("btn-notice-extend-10");
+    if (btnNoticeExtend10) {
+        btnNoticeExtend10.addEventListener("click", () => updateCutoff(10, false));
+    }
     const btnCloseCutoffNow = document.getElementById("btn-close-cutoff-now");
     if (btnCloseCutoffNow) {
         btnCloseCutoffNow.addEventListener("click", () => {
@@ -383,20 +425,50 @@ function setupEventListeners() {
 
     async function updateCutoff(extendMinutes, closeNow) {
         if (!activeSessionId) return;
+        let pin = localStorage.getItem("titip_makan_coordinator_pin") || "1234";
         try {
-            const resp = await fetch(`/api/v1/sessions/${activeSessionId}/cutoff`, {
+            let resp = await fetch(`/api/v1/sessions/${activeSessionId}/cutoff`, {
                 method: "PATCH",
-                headers: { "Content-Type": "application/json" },
+                headers: { 
+                    "Content-Type": "application/json",
+                    "X-Coordinator-Pin": pin
+                },
                 body: JSON.stringify({
                     extend_minutes: extendMinutes || null,
                     close_now: closeNow || false
                 })
             });
+
+            if (resp.status === 403) {
+                const promptedPin = prompt("Masukkan PIN Koordinator:", "1234");
+                if (!promptedPin) return;
+                pin = promptedPin;
+                localStorage.setItem("titip_makan_coordinator_pin", pin);
+                resp = await fetch(`/api/v1/sessions/${activeSessionId}/cutoff`, {
+                    method: "PATCH",
+                    headers: { 
+                        "Content-Type": "application/json",
+                        "X-Coordinator-Pin": pin
+                    },
+                    body: JSON.stringify({
+                        extend_minutes: extendMinutes || null,
+                        close_now: closeNow || false
+                    })
+                });
+            }
+
             if (resp.ok) {
-                showToast(closeNow ? "Batas waktu pemesanan ditutup sekarang!" : `Waktu sesi diperpanjang +${extendMinutes} menit!`, "success");
+                const updatedSession = await resp.json();
+                if (closeNow) {
+                    showToast("Batas waktu pemesanan ditutup sekarang!", "success");
+                } else if (window.previousSessionStatus === "CLOSED" && updatedSession.status === "OPEN") {
+                    showToast(`Sesi berhasil dibuka kembali sementara selama ${extendMinutes} menit! 🎉`, "success");
+                } else {
+                    showToast(`Waktu sesi diperpanjang +${extendMinutes} menit!`, "success");
+                }
                 await checkActiveSession();
             } else {
-                showToast("Gagal mengubah batas waktu.", "error");
+                showToast("Gagal mengubah batas waktu sesi.", "error");
             }
         } catch (e) {
             showToast("Terjadi kesalahan jaringan.", "error");

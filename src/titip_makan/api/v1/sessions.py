@@ -86,6 +86,21 @@ async def update_cutoff(
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
+@router.post("/{session_id}/reopen", response_model=SessionOut)
+async def reopen_session_endpoint(
+    session_id: int,
+    minutes: int = Query(5, ge=1, le=120, description="Durasi perpanjangan menit buka sesi"),
+    x_coordinator_pin: Optional[str] = Header(None),
+    db: AsyncSession = Depends(get_db)
+):
+    if settings.coordinator_pin and x_coordinator_pin != settings.coordinator_pin:
+        raise HTTPException(status_code=403, detail="Invalid coordinator PIN")
+    service = SessionService(db)
+    try:
+        return await service.reopen_session(session_id, extend_minutes=minutes)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
 @router.post("/{session_id}/broadcast")
 async def broadcast_session_announcement(
     session_id: int,

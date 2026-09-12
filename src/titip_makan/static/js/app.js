@@ -7,6 +7,7 @@ let lastSavedOrder = null;
 async function initApp() {
     setupQuickNames();
     setupModalHandlers();
+    setupQuickReopenEventListeners();
     await fetchActiveSession();
     setupFormEventListeners();
 }
@@ -59,8 +60,10 @@ async function fetchActiveSession() {
         const statusBadge = document.getElementById("session-status-badge");
         const openModalBtn = document.getElementById("btn-open-order-modal");
         const mobileOpenModalBtn = document.getElementById("btn-mobile-open-order-modal");
+        const reopenQuickCard = document.getElementById("reopen-quick-card");
 
         if (data.status === "CLOSED") {
+            if (reopenQuickCard) reopenQuickCard.classList.remove("hidden");
             statusBadge.className = "px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-700";
             statusBadge.innerText = "SESI DITUTUP";
             if (openModalBtn) {
@@ -75,6 +78,7 @@ async function fetchActiveSession() {
             }
             document.getElementById("countdown-timer").innerText = "DITUTUP";
         } else {
+            if (reopenQuickCard) reopenQuickCard.classList.add("hidden");
             statusBadge.className = "px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700";
             statusBadge.innerText = "MEMBUAT PESANAN";
             if (openModalBtn) {
@@ -538,6 +542,59 @@ function setupModalHandlers() {
             closeModal();
         }
     });
+}
+
+function setupQuickReopenEventListeners() {
+    const btn5 = document.getElementById("btn-quick-reopen-5");
+    const btn10 = document.getElementById("btn-quick-reopen-10");
+
+    async function quickReopen(minutes) {
+        if (!currentSession) return;
+        let pin = localStorage.getItem("titip_makan_coordinator_pin") || "1234";
+        try {
+            let resp = await fetch(`/api/v1/sessions/${currentSession.id}/cutoff`, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-Coordinator-Pin": pin
+                },
+                body: JSON.stringify({
+                    extend_minutes: minutes,
+                    close_now: false
+                })
+            });
+
+            if (resp.status === 403) {
+                const promptedPin = prompt("Masukkan PIN Koordinator untuk membuka sesi sementara:", "1234");
+                if (!promptedPin) return;
+                pin = promptedPin;
+                localStorage.setItem("titip_makan_coordinator_pin", pin);
+                resp = await fetch(`/api/v1/sessions/${currentSession.id}/cutoff`, {
+                    method: "PATCH",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-Coordinator-Pin": pin
+                    },
+                    body: JSON.stringify({
+                        extend_minutes: minutes,
+                        close_now: false
+                    })
+                });
+            }
+
+            if (resp.ok) {
+                showToast(`Sesi berhasil dibuka kembali sementara selama ${minutes} menit! 🎉`, "success");
+                await fetchActiveSession();
+            } else {
+                showToast("Gagal membuka sesi sementara.", "error");
+            }
+        } catch (e) {
+            showToast("Terjadi kesalahan jaringan.", "error");
+        }
+    }
+
+    if (btn5) btn5.addEventListener("click", () => quickReopen(5));
+    if (btn10) btn10.addEventListener("click", () => quickReopen(10));
 }
 
 function setupFormEventListeners() {

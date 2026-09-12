@@ -130,10 +130,17 @@ class SessionService:
         now = datetime.now(timezone.utc)
 
         if close_now:
+            await self.repo.close(session_id)
             updated = await self.repo.update_cutoff(session_id, now)
             return self._to_schema(updated)
 
         if extend_minutes and extend_minutes > 0:
+            if session.status == "CLOSED":
+                base_time = now
+                new_cutoff = base_time + timedelta(minutes=extend_minutes)
+                updated = await self.repo.reopen(session_id, new_cutoff)
+                return self._to_schema(updated)
+
             if session.cutoff_at:
                 curr_cutoff = session.cutoff_at if session.cutoff_at.tzinfo else session.cutoff_at.replace(tzinfo=timezone.utc)
                 base_time = max(now, curr_cutoff)
@@ -144,6 +151,19 @@ class SessionService:
             return self._to_schema(updated)
 
         return self._to_schema(session)
+
+    async def reopen_session(
+        self,
+        session_id: int,
+        extend_minutes: int = 5
+    ) -> SessionOut:
+        session = await self.repo.get_by_id(session_id)
+        if not session:
+            raise ValueError(f"Session with ID {session_id} not found")
+        now = datetime.now(timezone.utc)
+        new_cutoff = now + timedelta(minutes=extend_minutes)
+        updated = await self.repo.reopen(session_id, new_cutoff)
+        return self._to_schema(updated)
 
     async def get_history(self) -> List[SessionOut]:
         sessions = await self.repo.get_all_history()
