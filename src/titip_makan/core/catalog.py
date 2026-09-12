@@ -1,5 +1,7 @@
 """Master Menu and Price Catalog extracted from verified WhatsApp chat history and physical menus."""
 
+MAIN_DISH_MIN_PRICE = 10000  # inclusive threshold for "makanan berat" (heuristic, price-based)
+
 MASTER_CATALOG = {
     "Babun": {
         "Babun Nasi Telor Dobel": 13000,

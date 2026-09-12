@@ -169,9 +169,17 @@
                         <label class="text-xs font-semibold text-slate-700">Tenant / Tempat Makan *</label>
                         <span class="text-[10px] text-indigo-600 font-medium">Bisa ketik bebas</span>
                     </div>
-                    <input type="text" id="input-tenant" list="datalist-tenants" required autocomplete="off"
-                        placeholder="Ketik tenant (misal: Mie Ayam, Babun)..."
-                        class="w-full px-3.5 py-2.5 text-base sm:text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <div class="flex items-center gap-2">
+                        <input type="text" id="input-tenant" list="datalist-tenants" required autocomplete="off"
+                            placeholder="Ketik tenant (misal: Mie Ayam, Babun)..."
+                            class="flex-1 min-w-0 px-3.5 py-2.5 text-base sm:text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        {% if session %}
+                        <button type="button" id="wheel-open-item" data-testid="wheel-open-item" title="Putar roda menu"
+                            class="flex-none w-11 h-11 sm:w-10 sm:h-10 flex items-center justify-center bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-xl text-lg transition">
+                            🎡
+                        </button>
+                        {% endif %}
+                    </div>
                     <datalist id="datalist-tenants"></datalist>
                     <p class="text-[11px] text-slate-400 mt-1">💡 Cukup ketik saja! Saran otomatis muncul jika pernah dipesan.</p>
                 </div>
@@ -252,8 +260,11 @@
 
     </div>
 </div>
+
+{% include "partials/wheel_modal.html" %}
 {% endblock %}
 
 {% block scripts %}
+<script src="/static/js/wheel.js"></script>
 <script src="/static/js/app.js"></script>
 {% endblock %}

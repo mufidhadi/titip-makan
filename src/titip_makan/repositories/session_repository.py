@@ -1,7 +1,8 @@
 import json
 from typing import Optional, List
 from datetime import datetime, timezone
-from sqlalchemy import select, update, func
+
+from sqlalchemy import select, update, func, or_, and_
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from titip_makan.models.session import PoolSession
@@ -62,6 +63,20 @@ class SessionRepository:
             select(PoolSession)
             .where(PoolSession.status == "OPEN")
             .order_by(PoolSession.id.desc())
+        )
+        return result.scalars().first()
+
+    async def get_latest_finished(self, now: datetime) -> Optional[PoolSession]:
+        result = await self.db.execute(
+            select(PoolSession)
+            .where(
+                or_(
+                    PoolSession.status == "CLOSED",
+                    and_(PoolSession.cutoff_at.isnot(None), PoolSession.cutoff_at <= now),
+                )
+            )
+            .order_by(PoolSession.created_at.desc())
+            .limit(1)
         )
         return result.scalars().first()
 

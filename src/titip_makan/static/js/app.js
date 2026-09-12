@@ -549,6 +549,29 @@ function setupFormEventListeners() {
     menuInput.addEventListener("input", handleMenuInput);
     menuInput.addEventListener("change", handleMenuInput);
 
+    const wheelOpenItemBtn = document.getElementById("wheel-open-item");
+    if (wheelOpenItemBtn) {
+        wheelOpenItemBtn.addEventListener("click", () => {
+            window.MenuWheel.open({
+                mode: "item",
+                onApply: (candidate) => {
+                    const targetTenant = document.getElementById("input-tenant");
+                    const targetMenu = document.getElementById("input-menu");
+                    const targetPrice = document.getElementById("input-price");
+
+                    targetTenant.value = candidate.vendor;
+                    targetMenu.value = candidate.label;
+                    targetPrice.value = candidate.price != null ? candidate.price : "";
+
+                    [targetTenant, targetMenu, targetPrice].forEach((el) => {
+                        el.dispatchEvent(new Event("input", { bubbles: true }));
+                        el.dispatchEvent(new Event("change", { bubbles: true }));
+                    });
+                }
+            });
+        });
+    }
+
     const form = document.getElementById("order-form");
     form.addEventListener("submit", async (e) => {
         e.preventDefault();
