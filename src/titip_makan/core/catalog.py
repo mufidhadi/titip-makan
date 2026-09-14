@@ -66,6 +66,6 @@ MASTER_CATALOG = {
     },
     "Kantin": {
         "Otak-otak Goreng Polosan": 10000,
-        "Gado-gado": 15000,
+        "Gado-gado": 20000,
     }
 }
