@@ -8,6 +8,7 @@ from titip_makan.api.v1.sessions import router as sessions_router
 from titip_makan.api.v1.orders import router as orders_router
 from titip_makan.api.v1.analytics import router as analytics_router
 from titip_makan.api.v1.wheel import router as wheel_router
+from titip_makan.api.v1.auto_order import router as auto_order_router
 from titip_makan.api.web import router as web_router
 from titip_makan.services.scheduler_service import SchedulerService
 
@@ -39,6 +40,7 @@ app.include_router(sessions_router, prefix="/api/v1")
 app.include_router(orders_router, prefix="/api/v1")
 app.include_router(analytics_router, prefix="/api/v1")
 app.include_router(wheel_router, prefix="/api/v1")
+app.include_router(auto_order_router, prefix="/api/v1")
 
 # Web routers
 app.include_router(web_router)

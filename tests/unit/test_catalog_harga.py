@@ -23,3 +23,15 @@ def test_semua_harga_masih_angka_wajar():
         for nama, harga in items.items():
             assert isinstance(harga, int), f"{vendor}/{nama} bukan bilangan bulat"
             assert 1000 <= harga <= 100000, f"{vendor}/{nama} = {harga} di luar kewajaran"
+
+
+def test_menu_padang_salero_datuak_mamas_lengkap():
+    """Menu Padang Salero Datuak Mamas (foodcourt): 32 items, prices per the shared menu list."""
+    padang = MASTER_CATALOG["Padang"]
+    assert len(padang) == 32
+    assert padang["Padang Nasi Rendang"] == 23000
+    assert padang["Padang Nasi Tunjang"] == 30000
+    assert padang["Padang Nasi Ikan Tongkol Balado"] == 20000
+    assert padang["Padang Ikan Bawal Bakar"] == 14000
+    assert padang["Padang Perkedel"] == 4000
+    assert padang["Padang Tunjang"] == 22000

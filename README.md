@@ -10,7 +10,7 @@ Platform internal pemesanan titip makan bersama untuk tim MTN CORE. Dirancang un
    - Setiap anggota tim melakukan submit pesanan masing-masing secara independen via web-form.
    - Tidak ada lagi konflik suntingan atau list WhatsApp yang terpotong.
 2. **Katalog & Varian Menu:**
-   - Mendukung multi-vendor (Mie Ayam, Babun, Nasi Goreng, Dimsum).
+   - Mendukung multi-vendor (Babun, Mie Ayam, Buah Potong, Kantin, Padang Salero Datuak Mamas).
    - Pilihan varian terstruktur (Pangsit Rebus vs Goreng, Lada Hitam vs Kremes vs Telor Dobel).
 3. **Rekapitulasi Otomatis (*Order Aggregator*):**
    - Dashboard koordinator mengelompokkan jumlah belanjaan per varian secara otomatis.
@@ -22,6 +22,10 @@ Platform internal pemesanan titip makan bersama untuk tim MTN CORE. Dirancang un
    - Tombol satu-klik untuk menyalin rekap rapi berformat markdown WhatsApp ke clipboard, siap di-paste ke grup MTN CORE.
 6. **Batas Waktu Otomatis (*Cut-off Timer*):**
    - Sesi otomatis terkunci saat jam batas pemesanan habis.
+7. **Auto Pesan Random (Senin–Jumat):**
+   - Di halaman Pesan Makan, tiap anggota bisa menyimpan daftar menu favoritnya sendiri dan mengaktifkan auto pesan.
+   - Setiap hari kerja, saat sesi harian dibuka, sistem memilih 1 menu secara acak dari daftar tersebut dan memasukkannya sebagai pesanan (catatan `🎲 auto random`, harga dari katalog).
+   - Dilewati jika anggota sudah pesan manual di sesi itu; pesanan auto yang dibatalkan tidak dimasukkan ulang.
 
 ---
 
