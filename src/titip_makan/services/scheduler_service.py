@@ -1,11 +1,13 @@
 import asyncio
 import logging
 from datetime import datetime, timezone, timedelta
-from typing import Optional, Callable
+from typing import List, Optional, Callable
 from titip_makan.core.database import async_session_factory
 from titip_makan.services.session_service import SessionService
+from titip_makan.services.auto_order_service import AutoOrderService
 from titip_makan.services.notification_service import NotificationService
 from titip_makan.schemas.session import SessionCreate, SessionOut
+from titip_makan.schemas.order import OrderOut
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +72,7 @@ class SchedulerService:
             title=title,
             coordinator_name="Irzi",
             coordinator_phone="+62 815-1382-5480",
-            vendor_options=["Babun", "Mie Ayam", "Buah Potong", "Kantin"],
+            vendor_options=["Babun", "Mie Ayam", "Buah Potong", "Kantin", "Padang"],
             payment_info="gopay ke +62 815-1382-5480",
             cutoff_minutes=cutoff_minutes,
             cutoff_at=cutoff_dt
@@ -80,12 +82,30 @@ class SchedulerService:
         new_session = await service.create_session(session_data)
         return new_session
 
+    async def check_and_place_auto_orders(self, now_wib: Optional[datetime] = None) -> List[OrderOut]:
+        """Monday-Friday: place each user's random auto order into the open session (once per session)."""
+        now = (now_wib or datetime.now(WIB)).astimezone(WIB)
+        if now.weekday() > 4:
+            return []
+
+        session_generator = self.session_factory()
+        if hasattr(session_generator, "__aenter__"):
+            async with session_generator as db:
+                placed = await AutoOrderService(db).place_orders_for_active_session()
+        else:
+            placed = await AutoOrderService(session_generator).place_orders_for_active_session()
+        if placed:
+            logger.info(f"Placed {len(placed)} weekday auto order(s)")
+        return placed
+
     async def run_loop(self):
         self._running = True
         logger.info("Starting automated weekday session scheduler...")
         while self._running:
             try:
                 await self.check_and_create_daily_session()
+                # ponytail: single-process SQLite app, no distributed lock; add one before running >1 replica
+                await self.check_and_place_auto_orders()
             except Exception as e:
                 logger.error(f"Error in automated session scheduler loop: {e}")
             await asyncio.sleep(30)
