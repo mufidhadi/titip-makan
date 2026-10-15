@@ -1,0 +1,281 @@
+{% extends "base.html" %}
+
+{% block title %}Katalog Menu & Tenant - MTN CORE{% endblock %}
+
+{% block content %}
+<div class="space-y-6 pb-20 sm:pb-10">
+    <!-- Header Banner & Quick Stats -->
+    <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden border border-slate-800">
+        <div class="absolute -right-10 -bottom-10 w-48 h-48 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none"></div>
+        <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div>
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-semibold mb-3">
+                    <span>🍜</span> <span>Katalog Resmi Titip Makan</span>
+                </div>
+                <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Katalog Tenant & Menu</h1>
+                <p class="text-slate-300 text-xs sm:text-sm mt-1.5 max-w-xl leading-relaxed">
+                    Daftar lengkap warung makan, tenant foodcourt, varian menu terdaftar, dan estimasi harga resmi untuk tim MTN CORE.
+                </p>
+            </div>
+
+            <!-- Stats Counters -->
+            <div class="flex items-center gap-3 sm:gap-4 flex-wrap">
+                <div class="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl px-4 py-3 min-w-[110px]">
+                    <div class="text-[11px] text-slate-300 font-medium uppercase tracking-wider">Tenant</div>
+                    <div id="stat-total-tenants" class="text-xl sm:text-2xl font-black text-amber-300 mt-0.5">{{ tenants_data|length }}</div>
+                </div>
+                <div class="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl px-4 py-3 min-w-[120px]">
+                    <div class="text-[11px] text-slate-300 font-medium uppercase tracking-wider">Total Menu</div>
+                    <div id="stat-total-menus" class="text-xl sm:text-2xl font-black text-emerald-400 mt-0.5">{{ total_items_count }}</div>
+                </div>
+                {% if session %}
+                <a href="/" class="inline-flex items-center gap-2 px-4 py-3 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-xs sm:text-sm rounded-2xl shadow-lg transition active:scale-95">
+                    <span>⚡</span> <span>Sesi Aktif: Pesan</span>
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Search & Filter Controls -->
+    <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-sm space-y-4">
+        <!-- Live Search Input -->
+        <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+            </div>
+            <input type="text" id="menu-search-input" placeholder="Cari nama menu atau tenant (contoh: ayam bakar, rendang, babun, padang, mie)..."
+                class="w-full pl-11 pr-10 py-3 text-sm sm:text-base rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition shadow-inner">
+            <button id="menu-search-clear" type="button" class="hidden absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 text-lg">
+                ✕
+            </button>
+        </div>
+
+        <!-- Horizontal Filter Pills (Tenants) -->
+        <div>
+            <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Filter Tenant</div>
+            <div class="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar" id="tenant-filter-pills">
+                <button type="button" data-tenant="all" class="tenant-filter-pill active px-3.5 py-1.5 rounded-full text-xs font-bold transition flex items-center gap-1.5 flex-shrink-0 bg-indigo-600 text-white shadow-sm">
+                    <span>🌟</span> <span>Semua Tenant</span>
+                    <span class="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-white/20 text-white" id="badge-count-all">{{ total_items_count }}</span>
+                </button>
+                {% for t in tenants_data %}
+                <button type="button" data-tenant="{{ t.name }}" class="tenant-filter-pill px-3.5 py-1.5 rounded-full text-xs font-semibold transition flex items-center gap-1.5 flex-shrink-0 bg-slate-100 hover:bg-slate-200 text-slate-700">
+                    <span>
+                        {% if t.name == 'Padang' %}🍗
+                        {% elif t.name == 'Babun' %}🍛
+                        {% elif t.name == 'Mie Ayam' %}🍜
+                        {% elif t.name == 'Buah Potong' %}🍉
+                        {% elif t.name == 'Kantin' %}🍱
+                        {% else %}🍽️{% endif %}
+                    </span>
+                    <span>{{ t.name }}</span>
+                    <span class="ml-0.5 px-1.5 py-0.2 rounded-full text-[10px] bg-slate-200 text-slate-600">{{ t.total_items }}</span>
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Menu Items List & Cards Container -->
+    <div id="catalog-container" class="space-y-6">
+        {% for t in tenants_data %}
+        <section class="tenant-section space-y-3" data-tenant-name="{{ t.name }}">
+            <!-- Tenant Section Header -->
+            <div class="flex items-center justify-between pb-2 border-b border-slate-200">
+                <div class="flex items-center gap-2.5">
+                    <span class="w-8 h-8 rounded-xl flex items-center justify-center text-sm font-bold
+                        {% if t.name == 'Padang' %}bg-amber-100 text-amber-800
+                        {% elif t.name == 'Babun' %}bg-emerald-100 text-emerald-800
+                        {% elif t.name == 'Mie Ayam' %}bg-rose-100 text-rose-800
+                        {% elif t.name == 'Buah Potong' %}bg-teal-100 text-teal-800
+                        {% elif t.name == 'Kantin' %}bg-blue-100 text-blue-800
+                        {% else %}bg-purple-100 text-purple-800{% endif %}">
+                        {% if t.name == 'Padang' %}🍗
+                        {% elif t.name == 'Babun' %}🍛
+                        {% elif t.name == 'Mie Ayam' %}🍜
+                        {% elif t.name == 'Buah Potong' %}🍉
+                        {% elif t.name == 'Kantin' %}🍱
+                        {% else %}🍽️{% endif %}
+                    </span>
+                    <div>
+                        <h2 class="text-base sm:text-lg font-bold text-slate-900">{{ t.name }}</h2>
+                        <span class="text-xs text-slate-400 tenant-item-counter">{{ t.total_items }} pilihan menu</span>
+                    </div>
+                </div>
+                <button type="button" onclick="filterByTenant('{{ t.name }}')" class="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition">
+                    Fokus Tenant &rarr;
+                </button>
+            </div>
+
+            <!-- Items Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 tenant-items-grid">
+                {% for item in t.menu_items %}
+                <div class="menu-item-card bg-white rounded-2xl p-4 border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-200 transition flex flex-col justify-between gap-3"
+                    data-tenant="{{ t.name }}"
+                    data-item-name="{{ item.name|lower }}"
+                    data-price="{{ item.price }}">
+                    <div>
+                        <div class="flex items-start justify-between gap-2">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider
+                                {% if t.name == 'Padang' %}bg-amber-50 text-amber-700 border border-amber-200/60
+                                {% elif t.name == 'Babun' %}bg-emerald-50 text-emerald-700 border border-emerald-200/60
+                                {% elif t.name == 'Mie Ayam' %}bg-rose-50 text-rose-700 border border-rose-200/60
+                                {% elif t.name == 'Buah Potong' %}bg-teal-50 text-teal-700 border border-teal-200/60
+                                {% elif t.name == 'Kantin' %}bg-blue-50 text-blue-700 border border-blue-200/60
+                                {% else %}bg-purple-50 text-purple-700 border border-purple-200/60{% endif %}">
+                                {{ t.name }}
+                            </span>
+                            {% if item.price > 0 %}
+                            <span class="text-sm sm:text-base font-extrabold text-slate-900">
+                                {{ item.formatted_price }}
+                            </span>
+                            {% else %}
+                            <span class="text-xs font-semibold text-slate-400 italic">
+                                Belum ada harga
+                            </span>
+                            {% endif %}
+                        </div>
+
+                        <h3 class="text-sm sm:text-base font-bold text-slate-800 mt-2 line-clamp-2 leading-snug">
+                            {{ item.name }}
+                        </h3>
+                    </div>
+
+                    <div class="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                        <span class="text-[11px] text-slate-400">Tersedia untuk sesi titip</span>
+                        <a href="/?vendor={{ t.name|urlencode }}&item={{ item.name|urlencode }}"
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white rounded-xl text-xs font-bold transition shadow-xs active:scale-95">
+                            <span>🍜</span> <span>Pesan</span>
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% endfor %}
+    </div>
+
+    <!-- Empty Search Results Alert -->
+    <div id="no-search-results" class="hidden bg-white rounded-3xl p-10 border border-slate-200 text-center shadow-sm space-y-3">
+        <div class="text-5xl">🔍</div>
+        <h3 class="text-base sm:text-lg font-bold text-slate-800">Menu Tidak Ditemukan</h3>
+        <p class="text-xs sm:text-sm text-slate-500 max-w-md mx-auto">
+            Tidak ada menu yang sesuai dengan kata kunci pencarian. Kamu tetap bisa memesan menu custom langsung di form pemesanan sesi aktif!
+        </p>
+        <div class="pt-2">
+            <button type="button" id="btn-reset-search" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition">
+                Reset Pencarian
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const searchInput = document.getElementById("menu-search-input");
+    const clearBtn = document.getElementById("menu-search-clear");
+    const resetBtn = document.getElementById("btn-reset-search");
+    const pills = document.querySelectorAll(".tenant-filter-pill");
+    const sections = document.querySelectorAll(".tenant-section");
+    const cards = document.querySelectorAll(".menu-item-card");
+    const noResults = document.getElementById("no-search-results");
+
+    let currentSelectedTenant = "all";
+
+    function applyFilter() {
+        const query = (searchInput.value || "").trim().toLowerCase();
+        let totalVisibleCards = 0;
+
+        if (query) {
+            clearBtn.classList.remove("hidden");
+        } else {
+            clearBtn.classList.add("hidden");
+        }
+
+        sections.forEach(sec => {
+            const tenantName = sec.getAttribute("data-tenant-name");
+            const isTenantMatch = currentSelectedTenant === "all" || currentSelectedTenant.toLowerCase() === tenantName.toLowerCase();
+
+            if (!isTenantMatch) {
+                sec.classList.add("hidden");
+                return;
+            }
+
+            let visibleInThisSection = 0;
+            const secCards = sec.querySelectorAll(".menu-item-card");
+            secCards.forEach(card => {
+                const itemName = card.getAttribute("data-item-name") || "";
+                const cardTenant = (card.getAttribute("data-tenant") || "").toLowerCase();
+                const matchesSearch = !query || itemName.includes(query) || cardTenant.includes(query);
+
+                if (matchesSearch) {
+                    card.classList.remove("hidden");
+                    visibleInThisSection++;
+                    totalVisibleCards++;
+                } else {
+                    card.classList.add("hidden");
+                }
+            });
+
+            if (visibleInThisSection > 0) {
+                sec.classList.remove("hidden");
+                const counter = sec.querySelector(".tenant-item-counter");
+                if (counter) {
+                    counter.innerText = query ? `${visibleInThisSection} menu cocok` : `${secCards.length} pilihan menu`;
+                }
+            } else {
+                sec.classList.add("hidden");
+            }
+        });
+
+        if (totalVisibleCards === 0) {
+            noResults.classList.remove("hidden");
+        } else {
+            noResults.classList.add("hidden");
+        }
+    }
+
+    window.filterByTenant = function(tenant) {
+        currentSelectedTenant = tenant;
+        pills.forEach(p => {
+            const pTenant = p.getAttribute("data-tenant");
+            if (pTenant.toLowerCase() === tenant.toLowerCase()) {
+                p.classList.remove("bg-slate-100", "text-slate-700", "hover:bg-slate-200");
+                p.classList.add("bg-indigo-600", "text-white", "shadow-sm", "active");
+            } else {
+                p.classList.remove("bg-indigo-600", "text-white", "shadow-sm", "active");
+                p.classList.add("bg-slate-100", "text-slate-700", "hover:bg-slate-200");
+            }
+        });
+        applyFilter();
+    };
+
+    pills.forEach(pill => {
+        pill.addEventListener("click", () => {
+            filterByTenant(pill.getAttribute("data-tenant"));
+        });
+    });
+
+    searchInput.addEventListener("input", applyFilter);
+
+    if (clearBtn) {
+        clearBtn.addEventListener("click", () => {
+            searchInput.value = "";
+            applyFilter();
+            searchInput.focus();
+        });
+    }
+
+    if (resetBtn) {
+        resetBtn.addEventListener("click", () => {
+            searchInput.value = "";
+            filterByTenant("all");
+            searchInput.focus();
+        });
+    }
+});
+</script>
+{% endblock %}

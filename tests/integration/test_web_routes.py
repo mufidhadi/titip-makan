@@ -32,6 +32,15 @@ async def test_web_routes(db_session):
         assert resp.status_code == 200
         assert "Leaderboard" in resp.text
 
+        # 5. Test menu & tenant catalog view
+        resp = await client.get("/menu")
+        assert resp.status_code == 200
+        assert "Katalog" in resp.text or "Menu & Tenant" in resp.text
+        assert "Padang" in resp.text
+        assert "Babun" in resp.text
+        assert "Mie Ayam" in resp.text
+        assert "23.000" in resp.text or "23000" in resp.text
+
         # 5. Test analytics overview API
         resp = await client.get("/api/v1/analytics/overview")
         assert resp.status_code == 200

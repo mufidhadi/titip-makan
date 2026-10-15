@@ -10,6 +10,36 @@ async function initApp() {
     setupQuickReopenEventListeners();
     await fetchActiveSession();
     setupFormEventListeners();
+    handleUrlPrefill();
+}
+
+function handleUrlPrefill() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const vendorParam = urlParams.get('vendor');
+    const itemParam = urlParams.get('item');
+
+    if (vendorParam || itemParam) {
+        if (currentSession && currentSession.status === "OPEN") {
+            const openBtn = document.getElementById("btn-open-order-modal");
+            if (openBtn) {
+                openBtn.click();
+            }
+            if (vendorParam) {
+                const tenantInput = document.getElementById("input-tenant");
+                if (tenantInput) {
+                    tenantInput.value = vendorParam;
+                    tenantInput.dispatchEvent(new Event("input"));
+                }
+            }
+            if (itemParam) {
+                const menuInput = document.getElementById("input-menu");
+                if (menuInput) {
+                    menuInput.value = itemParam;
+                    menuInput.dispatchEvent(new Event("input"));
+                }
+            }
+        }
+    }
 }
 
 function parseUtcDate(dateStr) {

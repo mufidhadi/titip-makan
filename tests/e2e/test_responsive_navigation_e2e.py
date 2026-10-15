@@ -39,6 +39,7 @@ async def test_responsive_navigation_desktop_and_mobile(live_server):
 
         # Desktop nav should be visible, mobile menu button should not be visible
         assert await desktop_page.locator("#nav-pesan").is_visible()
+        assert await desktop_page.locator("#nav-menu").is_visible()
         assert await desktop_page.locator("#nav-history").is_visible()
         assert await desktop_page.locator("#nav-leaderboard").is_visible()
         assert await desktop_page.locator("#nav-coordinator").is_visible()
