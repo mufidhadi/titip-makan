@@ -308,5 +308,33 @@ async def test_order_without_variant_and_clean_aggregation(db_session):
     assert "2x Mie Ayam Spesial - Rp 36.000" in summary.whatsapp_recap_text
 
 
+@pytest.mark.asyncio
+async def test_create_order_auto_fills_catalog_price_if_zero(db_session):
+    session_service = SessionService(db_session)
+    order_service = OrderService(db_session)
+    session = await session_service.create_session(
+        SessionCreate(
+            title="Sesi Padang",
+            coordinator_name="Irzi",
+            vendor_options=["Padang"],
+            cutoff_minutes=60
+        )
+    )
+    # Order using alias vendor "Kantin Mamas" and unprefixed "Nasi Rendang" with price=0
+    order = await order_service.create_order(
+        session.id,
+        OrderCreate(
+            user_name="Mufid",
+            vendor="Kantin Mamas",
+            item_name="Nasi Rendang",
+            price=0
+        )
+    )
+    assert order.vendor == "Padang"
+    assert order.item_name == "Padang Nasi Rendang"
+    assert order.price == 23000
+
+
+
 
 

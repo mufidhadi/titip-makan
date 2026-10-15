@@ -104,3 +104,23 @@ MASTER_CATALOG = {
         "Padang Tunjang": 22000,
     }
 }
+
+VENDOR_ALIASES = {
+    "kantin mamas": "Padang",
+    "padang salero datuak": "Padang",
+    "padang salero datuak mamas": "Padang",
+    "salero datuak": "Padang",
+    "mamas": "Padang",
+    "padang": "Padang",
+    "babu": "Babun",
+    "mie ayam": "Mie Ayam",
+}
+
+
+def normalize_vendor(raw_vendor: str) -> str:
+    """Normalize vendor name using canonical casing and aliases to prevent dirty data."""
+    if not raw_vendor:
+        return raw_vendor
+    v = raw_vendor.strip()
+    return VENDOR_ALIASES.get(v.lower(), v)
+

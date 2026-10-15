@@ -35,3 +35,15 @@ def test_menu_padang_salero_datuak_mamas_lengkap():
     assert padang["Padang Ikan Bawal Bakar"] == 14000
     assert padang["Padang Perkedel"] == 4000
     assert padang["Padang Tunjang"] == 22000
+
+
+def test_normalize_vendor_padang_salero_datuak():
+    from titip_makan.core.catalog import normalize_vendor
+    assert normalize_vendor("Kantin Mamas") == "Padang"
+    assert normalize_vendor("Padang Salero Datuak") == "Padang"
+    assert normalize_vendor("salero datuak") == "Padang"
+    assert normalize_vendor("padang salero datuak mamas") == "Padang"
+    assert normalize_vendor("mamas") == "Padang"
+    assert normalize_vendor("babu") == "Babun"
+    assert normalize_vendor("Mie ayam") == "Mie Ayam"
+

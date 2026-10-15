@@ -6,8 +6,10 @@ from titip_makan.repositories.order_repository import OrderRepository
 from titip_makan.repositories.session_repository import SessionRepository
 from titip_makan.schemas.order import OrderCreate, OrderOut, AggregatedItem, SessionSummary, UnpaidUserItem, OrderUpdate
 from titip_makan.models.order import OrderItem
+from titip_makan.core.catalog import MASTER_CATALOG, normalize_vendor
 
 class OrderService:
+
     def __init__(self, db: AsyncSession):
         self.order_repo = OrderRepository(db)
         self.session_repo = SessionRepository(db)
@@ -42,16 +44,28 @@ class OrderService:
                 await self.session_repo.close(session_id)
                 raise ValueError("Session order deadline has passed.")
 
+        clean_vendor = normalize_vendor(data.vendor)
+        clean_item = data.item_name.strip()
+        clean_price = data.price or 0
+        if clean_price <= 0 and clean_vendor in MASTER_CATALOG:
+            v_catalog = MASTER_CATALOG[clean_vendor]
+            if clean_item in v_catalog:
+                clean_price = v_catalog[clean_item]
+            elif f"{clean_vendor} {clean_item}" in v_catalog:
+                clean_item = f"{clean_vendor} {clean_item}"
+                clean_price = v_catalog[clean_item]
+
         order = await self.order_repo.create(
             session_id=session_id,
             user_name=data.user_name.strip(),
-            vendor=data.vendor.strip(),
-            item_name=data.item_name.strip(),
+            vendor=clean_vendor,
+            item_name=clean_item,
             variant=data.variant.strip() if data.variant else "",
             notes=data.notes.strip() if data.notes else "",
-            price=data.price or 0
+            price=clean_price
         )
         return self._to_schema(order)
+
 
     async def get_orders_by_session(self, session_id: int) -> List[OrderOut]:
         orders = await self.order_repo.get_by_session(session_id)
@@ -128,6 +142,11 @@ class OrderService:
             for item, price in items.items():
                 menus_dict[vendor].add(item)
                 prices_dict[item] = price
+                # Also allow unprefixed name in prices so typing "Nasi Rendang" gets auto-filled
+                if item.startswith(f"{vendor} "):
+                    unprefixed = item[len(vendor) + 1:]
+                    menus_dict[vendor].add(unprefixed)
+                    prices_dict[unprefixed] = price
 
         if session_id:
             session = await self.session_repo.get_by_id(session_id)
@@ -137,14 +156,16 @@ class OrderService:
                 except Exception:
                     opts = [v.strip() for v in session.vendor_options.split(",") if v.strip()]
                 for opt in opts:
-                    tenants_set.add(opt)
+                    tenants_set.add(normalize_vendor(opt))
 
         distinct_items = await self.order_repo.get_distinct_items()
         for vendor, item_name, _ in distinct_items:
-            if vendor:
-                tenants_set.add(vendor)
+            v_norm = normalize_vendor(vendor) if vendor else None
+            if v_norm:
+                tenants_set.add(v_norm)
                 if item_name:
-                    menus_dict[vendor].add(item_name)
+                    menus_dict[v_norm].add(item_name)
+
 
         return {
             "tenants": sorted(list(tenants_set)),
