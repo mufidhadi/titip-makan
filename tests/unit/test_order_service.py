@@ -335,6 +335,34 @@ async def test_create_order_auto_fills_catalog_price_if_zero(db_session):
     assert order.price == 23000
 
 
+@pytest.mark.asyncio
+async def test_create_order_auto_fills_dapoer_bumbu_catalog_price(db_session):
+    session_service = SessionService(db_session)
+    order_service = OrderService(db_session)
+    session = await session_service.create_session(
+        SessionCreate(
+            title="Sesi Dapoer Bumbu",
+            coordinator_name="Irzi",
+            vendor_options=["Dapoer Bumbu"],
+            cutoff_minutes=60
+        )
+    )
+    # Order using alias vendor "dapur bumbu" and unprefixed "Nasi Capcay" with price=0
+    order = await order_service.create_order(
+        session.id,
+        OrderCreate(
+            user_name="Mufid",
+            vendor="dapur bumbu",
+            item_name="Nasi Capcay",
+            price=0
+        )
+    )
+    assert order.vendor == "Dapoer Bumbu"
+    assert order.item_name == "Dapoer Bumbu Nasi Capcay"
+    assert order.price == 18000
+
+
+
 
 
 

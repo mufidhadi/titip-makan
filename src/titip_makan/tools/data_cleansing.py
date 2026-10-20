@@ -116,6 +116,12 @@ class DatabaseCleaner:
             logs.append(f"[Vendor Fix] ID {row_id} ({user_name}): vendor '{item}' -> 'Padang'")
             cursor.execute("UPDATE order_items SET vendor = 'Padang' WHERE id = ?", (row_id,))
 
+        # 1.7 'dapur bumbu', 'dapoer', 'dapur' -> 'Dapoer Bumbu'
+        cursor.execute("SELECT id, user_name, vendor FROM order_items WHERE LOWER(vendor) IN ('dapur bumbu', 'dapoer', 'dapur')")
+        for row_id, user_name, v in cursor.fetchall():
+            logs.append(f"[Vendor Fix] ID {row_id} ({user_name}): vendor '{v}' -> 'Dapoer Bumbu'")
+            cursor.execute("UPDATE order_items SET vendor = 'Dapoer Bumbu' WHERE id = ?", (row_id,))
+
         return logs
 
     def _clean_menus(self, cursor: sqlite3.Cursor) -> List[str]:
@@ -139,6 +145,11 @@ class DatabaseCleaner:
             ("Padang", "Nasi Padang Rendang", "Padang Nasi Rendang"),
             ("Padang", "Nasi ayam bakar", "Padang Nasi Ayam Bakar"),
             ("Padang", "Nasi rendang", "Padang Nasi Rendang"),
+            # Dapoer Bumbu
+            ("Dapoer Bumbu", "Nasi Capcay", "Dapoer Bumbu Nasi Capcay"),
+            ("Dapoer Bumbu", "Nasi Cap Cay", "Dapoer Bumbu Nasi Capcay"),
+            ("Dapoer Bumbu", "Nasi Goreng Bakso", "Dapoer Bumbu Nasi Goreng Bakso"),
+            ("Dapoer Bumbu", "Nasi Capcay + Telor Ceplok", "Dapoer Bumbu Nasi Capcay + Telor Ceplok"),
         ]
 
 

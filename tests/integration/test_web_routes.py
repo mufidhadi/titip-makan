@@ -39,6 +39,7 @@ async def test_web_routes(db_session):
         assert "Padang" in resp.text
         assert "Babun" in resp.text
         assert "Mie Ayam" in resp.text
+        assert "Dapoer Bumbu" in resp.text
         assert "23.000" in resp.text or "23000" in resp.text
 
         # 5. Test analytics overview API

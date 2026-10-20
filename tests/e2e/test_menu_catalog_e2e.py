@@ -41,14 +41,26 @@ async def test_menu_catalog_page_e2e(live_server):
         assert await page.locator("#stat-total-tenants").is_visible()
         assert await page.locator("#stat-total-menus").is_visible()
 
-        # 3. Verifikasi Keberadaan Tenant Padang, Babun, Mie Ayam
+        # 3. Verifikasi Keberadaan Tenant Padang, Babun, Mie Ayam, Dapoer Bumbu
         content = await page.content()
         assert "Padang" in content
         assert "Babun" in content
         assert "Mie Ayam" in content
+        assert "Dapoer Bumbu" in content
         assert "Nasi Rendang" in content
+        assert "Nasi Timbel Komplit" in content
 
-        # 4. Uji Filter Pill Tenant "Padang"
+        # 4. Uji Filter Pill Tenant "Dapoer Bumbu"
+        dapoer_pill = page.locator('button.tenant-filter-pill[data-tenant="Dapoer Bumbu"]')
+        assert await dapoer_pill.is_visible()
+        await dapoer_pill.click()
+        await page.wait_for_timeout(200)
+
+        # Dapoer Bumbu section harus terlihat, Babun section harus tersembunyi
+        assert await page.locator('section[data-tenant-name="Dapoer Bumbu"]').is_visible()
+        assert not await page.locator('section[data-tenant-name="Babun"]').is_visible()
+
+        # Uji Filter Pill Tenant "Padang"
         padang_pill = page.locator('button.tenant-filter-pill[data-tenant="Padang"]')
         assert await padang_pill.is_visible()
         await padang_pill.click()

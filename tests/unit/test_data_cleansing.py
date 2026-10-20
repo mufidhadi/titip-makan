@@ -52,7 +52,9 @@ def dirty_db_path(tmp_path: Path) -> Path:
         (205, 20, 'Shazi', 'Babun', 'Nasi telor double', 0, 0, '2026-09-30 03:43:13'),
         (209, 21, 'Harist', 'Babun', 'Mie Ayam Pangsit Rebus', 15000, 0, '2026-10-01 03:04:52'),
         (297, 28, 'Diky', 'Babun', 'Nasi Telor + Tahu + Tempe', 0, 0, '2026-10-12 03:14:46'),
-        (321, 30, 'Raka', 'Kantin Mamas', 'Nasi Padang Rendang', 0, 0, '2026-10-14 03:15:59');
+        (321, 30, 'Raka', 'Kantin Mamas', 'Nasi Padang Rendang', 0, 0, '2026-10-14 03:15:59'),
+        (400, 35, 'Indra', 'dapur bumbu', 'Nasi Goreng Bakso', 15000, 0, '2026-10-18 03:00:00'),
+        (401, 35, 'Raga', 'Dapoer Bumbu', 'Nasi Capcay', 18000, 0, '2026-10-18 03:00:00');
     """)
     conn.commit()
     conn.close()
@@ -140,6 +142,17 @@ def test_clean_fixes_all_anomalies(dirty_db_path: Path):
     row = c.fetchone()
     assert row[0] == "Padang"
     assert row[1] == "Padang Nasi Rendang"
+
+    # Check dapur bumbu -> Dapoer Bumbu & menu prefix
+    c.execute("SELECT vendor, item_name FROM order_items WHERE id = 400")
+    row = c.fetchone()
+    assert row[0] == "Dapoer Bumbu"
+    assert row[1] == "Dapoer Bumbu Nasi Goreng Bakso"
+
+    c.execute("SELECT vendor, item_name FROM order_items WHERE id = 401")
+    row = c.fetchone()
+    assert row[0] == "Dapoer Bumbu"
+    assert row[1] == "Dapoer Bumbu Nasi Capcay"
 
     conn.close()
 
