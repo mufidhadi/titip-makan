@@ -137,16 +137,23 @@ class OrderService:
         menus_dict = defaultdict(set)
         prices_dict = {}
 
-        # Seed from master catalog
+        # Tenants whose catalog items have redundant vendor prefix that should be stripped for clean menu display
+        TENANTS_WITH_VENDOR_PREFIX = {"Babun", "Dapoer Bumbu", "Padang"}
+
+        # Seed from master catalog (clean dish names for menus, dual lookup for prices)
         for vendor, items in MASTER_CATALOG.items():
             for item, price in items.items():
-                menus_dict[vendor].add(item)
-                prices_dict[item] = price
-                # Also allow unprefixed name in prices so typing "Nasi Rendang" gets auto-filled
-                if item.startswith(f"{vendor} "):
-                    unprefixed = item[len(vendor) + 1:]
-                    menus_dict[vendor].add(unprefixed)
-                    prices_dict[unprefixed] = price
+                if vendor in TENANTS_WITH_VENDOR_PREFIX and item.startswith(f"{vendor} "):
+                    clean_name = item[len(vendor) + 1:]
+                    menus_dict[vendor].add(clean_name)
+                    prices_dict[clean_name] = price
+                    prices_dict[item] = price
+                else:
+                    menus_dict[vendor].add(item)
+                    prices_dict[item] = price
+                    if item.startswith(f"{vendor} "):
+                        unprefixed = item[len(vendor) + 1:]
+                        prices_dict[unprefixed] = price
 
         if session_id:
             session = await self.session_repo.get_by_id(session_id)
@@ -164,7 +171,10 @@ class OrderService:
             if v_norm:
                 tenants_set.add(v_norm)
                 if item_name:
-                    menus_dict[v_norm].add(item_name)
+                    clean_item = item_name
+                    if v_norm in TENANTS_WITH_VENDOR_PREFIX and clean_item.startswith(f"{v_norm} "):
+                        clean_item = clean_item[len(v_norm) + 1:]
+                    menus_dict[v_norm].add(clean_item)
 
 
         return {

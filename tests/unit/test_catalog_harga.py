@@ -70,7 +70,6 @@ def test_menu_dapoer_bumbu_lengkap():
     assert db["Dapoer Bumbu Nasi Sop Ikan Asam Manis Pedas"] == 18000
     assert db["Dapoer Bumbu Nasi Gurame Asam Manis"] == 18000
     assert db["Dapoer Bumbu Nasi Gurame Tauco"] == 18000
-    assert db["Dapoer Bumbu Nasi Cap Cay"] == 18000
     assert db["Dapoer Bumbu Nasi Capcay"] == 18000
     assert db["Dapoer Bumbu Nasi Capcay + Telor Ceplok"] == 23000
     assert db["Dapoer Bumbu Nasi Goreng Teri"] == 15000
@@ -82,7 +81,7 @@ def test_menu_dapoer_bumbu_lengkap():
     assert db["Dapoer Bumbu Bihun Rebus"] == 15000
     assert db["Dapoer Bumbu Kwetiau Goreng"] == 15000
     assert db["Dapoer Bumbu Kwetiau Rebus"] == 15000
-    assert db["Dapoer Bumbu Cap Cay (Tanpa Nasi)"] == 14000
+    assert db["Dapoer Bumbu Capcay (Tanpa Nasi)"] == 14000
     assert db["Dapoer Bumbu Sop Ikan (Tanpa Nasi)"] == 14000
     assert db["Dapoer Bumbu Gurame Asam Manis (Tanpa Nasi)"] == 14000
     assert db["Dapoer Bumbu Gurame Tauco (Tanpa Nasi)"] == 14000
@@ -126,5 +125,49 @@ def test_normalize_vendor_dapoer_bumbu():
     assert normalize_vendor("Dapur Bumbu") == "Dapoer Bumbu"
     assert normalize_vendor("dapoer") == "Dapoer Bumbu"
     assert normalize_vendor("dapur") == "Dapoer Bumbu"
+
+
+def test_dapoer_bumbu_catalog_tidak_ada_menu_terdobel():
+    """Memastikan katalog Dapoer Bumbu bersih dari item terdobel (komposit garis miring & ejaan ganda)."""
+    db = MASTER_CATALOG["Dapoer Bumbu"]
+    # 1. Komposit garis miring yang menduplikasi menu individual tidak boleh ada di katalog
+    slash_composites = [
+        "Dapoer Bumbu Nasi Ayam Penyet / Kremes / Bakar",
+        "Dapoer Bumbu Ayam Bakar / Kremes / Penyet (Tanpa Nasi)",
+        "Dapoer Bumbu Nasi Ayam Goreng Asam Manis / Tauco",
+        "Dapoer Bumbu Ayam Asam Manis / Tauco / Garang Asam (Tanpa Nasi)",
+        "Dapoer Bumbu Nasi Gurame Asam Manis / Tauco",
+        "Dapoer Bumbu Nasi Goreng Teri / Nasi Goreng Bakso",
+        "Dapoer Bumbu Mie / Bihun / Kwetiau Goreng / Rebus",
+        "Dapoer Bumbu Cap Cay / Sop Ikan / Gurame Asam Manis / Tauco (Tanpa Nasi)",
+        "Dapoer Bumbu Tumis Toge / Kangkung",
+        "Dapoer Bumbu Tumis Sawi Putih / Ijo",
+        "Dapoer Bumbu Telor Dadar / Ceplok",
+        "Dapoer Bumbu Tahu / Tempe Goreng",
+        "Dapoer Bumbu Tahu / Tempe Penyet",
+        "Dapoer Bumbu Es Jeruk / Es Lemon Tea",
+        "Dapoer Bumbu Es Indocafe / Kopi Tubruk",
+    ]
+    for composite in slash_composites:
+        assert composite not in db, f"Menu komposit terdobel ditemukan: {composite}"
+
+    # 2. Ejaan ganda / variasi duplikat tidak boleh ada
+    duplicate_spellings = [
+        "Dapoer Bumbu Nasi Cap Cay",  # Duplikat dari Nasi Capcay
+        "Dapoer Bumbu Cap Cay (Tanpa Nasi)",  # Duplikat dari Capcay (Tanpa Nasi)
+        "Dapoer Bumbu Kwitiaw Goreng",  # Duplikat dari Kwetiau Goreng
+        "Dapoer Bumbu Kwitiaw Rebus",  # Duplikat dari Kwetiau Rebus
+        "Dapoer Bumbu Nasi Goreng Mawut",  # Duplikat dari Nasi Goreng Mawut (Campur Mie)
+        "Dapoer Bumbu Teh Manis",  # Duplikat dari Teh Manis Panas
+        "Dapoer Bumbu Teh Tawar",  # Duplikat dari Teh Tawar Panas
+        "Dapoer Bumbu Teh Tarik",  # Duplikat dari Es Teh Tarik
+        "Dapoer Bumbu Lemon Tea",  # Duplikat dari Es Lemon Tea
+    ]
+    for dup in duplicate_spellings:
+        assert dup not in db, f"Ejaan/varian duplikat ditemukan: {dup}"
+
+    # 3. Jumlah menu Dapoer Bumbu terdaftar tepat 59 item unik
+    assert len(db) == 59
+
 
 

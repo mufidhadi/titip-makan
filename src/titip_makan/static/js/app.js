@@ -208,10 +208,10 @@ function handleMenuInput() {
         priceInput.value = suggestionsData.prices[val];
     }
 
-    // 2. Auto-fill tenant if empty and menu belongs to a known tenant
+    // 2. Auto-fill tenant if empty and menu belongs to a known tenant (exact match or prefixed with tenant name)
     if (tenantInput && !tenantInput.value.trim() && suggestionsData.menus) {
         for (const [t, menus] of Object.entries(suggestionsData.menus)) {
-            if (menus.includes(val)) {
+            if (menus.includes(val) || (val.toLowerCase().startsWith(t.toLowerCase() + " ") && menus.includes(val.substring(t.length + 1).trim()))) {
                 tenantInput.value = t;
                 updateMenuDatalist();
                 break;

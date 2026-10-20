@@ -250,11 +250,12 @@ async def test_get_suggestions_includes_master_catalog_with_prices(db_session):
     assert "Mie Ayam" in suggestions["tenants"]
     assert "Buah Potong" in suggestions["tenants"]
     
-    # Verify menus
-    assert "Babun Nasi Telor Dobel" in suggestions["menus"]["Babun"]
-    assert "Babun Nasi Ayam Kremes" in suggestions["menus"]["Babun"]
+    # Verify menus (clean, non-duplicated dish names)
+    assert "Nasi Telor Dobel" in suggestions["menus"]["Babun"]
+    assert "Nasi Ayam Kremes" in suggestions["menus"]["Babun"]
     assert "Mie Ayam Pangsit Rebus" in suggestions["menus"]["Mie Ayam"]
     assert "Buah Potong Semangka" in suggestions["menus"]["Buah Potong"]
+    assert "Babun Nasi Telor Dobel" not in suggestions["menus"]["Babun"]
     
     # Verify prices mapping
     assert "prices" in suggestions
@@ -360,6 +361,45 @@ async def test_create_order_auto_fills_dapoer_bumbu_catalog_price(db_session):
     assert order.vendor == "Dapoer Bumbu"
     assert order.item_name == "Dapoer Bumbu Nasi Capcay"
     assert order.price == 18000
+
+
+@pytest.mark.asyncio
+async def test_suggestions_no_prefixed_duplicates_dapoer_bumbu_and_babun(db_session):
+    """Memastikan menu suggestions tidak memiliki duplikasi prefix vendor untuk Dapoer Bumbu dan Babun."""
+    order_service = OrderService(db_session)
+    suggestions = await order_service.get_suggestions()
+
+    menus = suggestions["menus"]
+    prices = suggestions["prices"]
+
+    # 1. Dapoer Bumbu
+    dapoer_items = menus.get("Dapoer Bumbu", [])
+    assert len(dapoer_items) > 0
+    # Tidak boleh ada item yang diawali 'Dapoer Bumbu '
+    prefixed_dapoer = [item for item in dapoer_items if item.startswith("Dapoer Bumbu ")]
+    assert prefixed_dapoer == [], f"Ditemukan item terdobel ber-prefix Dapoer Bumbu: {prefixed_dapoer}"
+    # Tidak boleh ada duplikasi
+    assert len(dapoer_items) == len(set(dapoer_items))
+    assert "Nasi Ayam Penyet" in dapoer_items
+    assert "Nasi Capcay" in dapoer_items
+
+    # 2. Babun
+    babun_items = menus.get("Babun", [])
+    assert len(babun_items) > 0
+    # Tidak boleh ada item yang diawali 'Babun '
+    prefixed_babun = [item for item in babun_items if item.startswith("Babun ")]
+    assert prefixed_babun == [], f"Ditemukan item terdobel ber-prefix Babun: {prefixed_babun}"
+    # Tidak boleh ada duplikasi
+    assert len(babun_items) == len(set(babun_items))
+    assert "Nasi Telor Dobel" in babun_items
+    assert "Nasi Ayam Bakar" in babun_items
+
+    # 3. Prices tetap memetakan baik varian tanpa prefix maupun dengan prefix
+    assert prices["Nasi Ayam Penyet"] == 20000
+    assert prices["Dapoer Bumbu Nasi Ayam Penyet"] == 20000
+    assert prices["Nasi Telor Dobel"] == 13000
+    assert prices["Babun Nasi Telor Dobel"] == 13000
+
 
 
 
