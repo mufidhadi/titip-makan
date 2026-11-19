@@ -1,7 +1,7 @@
 import sqlite3
 import pytest
 from pathlib import Path
-from titip_makan.tools.data_cleansing import clean_database, DatabaseCleaner
+from titip_makan.tools.data_cleansing import DatabaseCleaner
 
 
 @pytest.fixture

@@ -1,7 +1,7 @@
 let currentSession = null;
 let pollTimer = null;
 let countdownInterval = null;
-let suggestionsData = { tenants: [], menus: {}, prices: {} };
+let suggestionsData = { tenants: [], menus: {}, prices: {}, prices_by_vendor: {} };
 let lastSavedOrder = null;
 
 async function initApp() {
@@ -168,6 +168,17 @@ function formatRupiahLabel(amount) {
     return "Rp " + amount.toLocaleString("id-ID");
 }
 
+// Harga hanya unambiguous per tenant: "Nasi Ayam Bakar" 22k di Babun, 23k di Padang,
+// 20k di Dapoer Bumbu. Prioritaskan peta per-tenant, baru fallback ke peta datar.
+function getKnownPrice(vendor, item) {
+    if (!item) return undefined;
+    const vendorPrices = suggestionsData.prices_by_vendor || {};
+    if (vendor && vendorPrices[vendor] && vendorPrices[vendor][item] !== undefined) {
+        return vendorPrices[vendor][item];
+    }
+    return suggestionsData.prices ? suggestionsData.prices[item] : undefined;
+}
+
 function updateMenuDatalist() {
     const selectedTenant = document.getElementById("input-tenant").value.trim();
     const menuDatalist = document.getElementById("datalist-menus");
@@ -177,8 +188,9 @@ function updateMenuDatalist() {
     const addOption = (m) => {
         const opt = document.createElement("option");
         opt.value = m;
-        if (suggestionsData.prices && suggestionsData.prices[m]) {
-            opt.label = formatRupiahLabel(suggestionsData.prices[m]);
+        const price = getKnownPrice(selectedTenant, m);
+        if (price) {
+            opt.label = formatRupiahLabel(price);
         }
         menuDatalist.appendChild(opt);
     };
@@ -203,20 +215,38 @@ function handleMenuInput() {
     const val = menuInput.value.trim();
     if (!val) return;
 
-    // 1. Auto-fill price if known
-    if (priceInput && suggestionsData.prices && suggestionsData.prices[val] !== undefined) {
-        priceInput.value = suggestionsData.prices[val];
-    }
+    let resolvedTenant = tenantInput ? tenantInput.value.trim() : "";
 
-    // 2. Auto-fill tenant if empty and menu belongs to a known tenant (exact match or prefixed with tenant name)
-    if (tenantInput && !tenantInput.value.trim() && suggestionsData.menus) {
+    // 1. Auto-fill tenant if empty and menu belongs to a known tenant (exact match or prefixed with tenant name)
+    if (tenantInput && !resolvedTenant && suggestionsData.menus) {
         for (const [t, menus] of Object.entries(suggestionsData.menus)) {
             if (menus.includes(val) || (val.toLowerCase().startsWith(t.toLowerCase() + " ") && menus.includes(val.substring(t.length + 1).trim()))) {
                 tenantInput.value = t;
+                resolvedTenant = t;
                 updateMenuDatalist();
                 break;
             }
         }
+    }
+
+    // 2. Auto-fill price if known (tenant-scoped first, so colliding dish names keep their own price)
+    if (priceInput) {
+        const price = getKnownPrice(resolvedTenant, val);
+        if (price !== undefined) {
+            priceInput.value = price;
+        }
+    }
+}
+
+function syncPriceWithTenant() {
+    const tenant = document.getElementById("input-tenant");
+    const menu = document.getElementById("input-menu");
+    const priceInput = document.getElementById("input-price");
+    if (!tenant || !menu || !priceInput) return;
+
+    const price = getKnownPrice(tenant.value.trim(), menu.value.trim());
+    if (price !== undefined) {
+        priceInput.value = price;
     }
 }
 
@@ -629,8 +659,14 @@ function setupQuickReopenEventListeners() {
 
 function setupFormEventListeners() {
     const tenantInput = document.getElementById("input-tenant");
-    tenantInput.addEventListener("input", updateMenuDatalist);
-    tenantInput.addEventListener("change", updateMenuDatalist);
+    tenantInput.addEventListener("input", () => {
+        updateMenuDatalist();
+        syncPriceWithTenant();
+    });
+    tenantInput.addEventListener("change", () => {
+        updateMenuDatalist();
+        syncPriceWithTenant();
+    });
 
     const menuInput = document.getElementById("input-menu");
     menuInput.addEventListener("input", handleMenuInput);

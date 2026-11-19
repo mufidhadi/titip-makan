@@ -62,3 +62,35 @@ async def test_web_routes(db_session):
         assert resp.json()["status"] == "healthy"
 
     app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_menu_page_price_is_scoped_per_tenant_for_colliding_dish_names(db_session):
+    """Regresi: "Nasi Ayam Bakar" Padang harus Rp 23.000, bukan harga Babun/Dapoer Bumbu."""
+    import re
+
+    async def override_get_db():
+        yield db_session
+
+    app.dependency_overrides[get_db] = override_get_db
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.get("/menu")
+        assert resp.status_code == 200
+        html = resp.text
+
+    app.dependency_overrides.clear()
+
+    card = re.search(
+        r'data-tenant="Padang"\s+data-item-name="nasi ayam bakar"\s+data-price="(\d+)"',
+        html,
+    )
+    assert card, "Kartu menu Padang Nasi Ayam Bakar tidak ditemukan di halaman /menu"
+    assert card.group(1) == "23000"
+
+    babun_card = re.search(
+        r'data-tenant="Babun"\s+data-item-name="nasi ayam bakar"\s+data-price="(\d+)"',
+        html,
+    )
+    assert babun_card and babun_card.group(1) == "22000"

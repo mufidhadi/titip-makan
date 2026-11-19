@@ -4,13 +4,12 @@ Follows SOLID principles:
 - DatabaseCleaner: Orchestrates backup, rule execution, and transactional updates (SRP / DIP)
 """
 
-import os
 import shutil
 import sqlite3
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 
 @dataclass

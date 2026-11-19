@@ -80,7 +80,8 @@
         if (candidates.some((c) => c.vendor === vendor && c.item_name === itemName)) {
             return setStatus("Menu sudah ada di daftar.", false);
         }
-        candidates.push({ vendor, item_name: itemName, price: suggestions.prices[itemName] || 0 });
+        const price = (suggestions.prices_by_vendor?.[vendor]?.[itemName]) ?? suggestions.prices[itemName];
+        candidates.push({ vendor, item_name: itemName, price: price || 0 });
         $("auto-order-menu").value = "";
         renderCandidates();
         setStatus("");

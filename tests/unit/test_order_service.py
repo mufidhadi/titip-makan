@@ -266,6 +266,27 @@ async def test_get_suggestions_includes_master_catalog_with_prices(db_session):
 
 
 @pytest.mark.asyncio
+async def test_get_suggestions_prices_are_vendor_scoped_for_colliding_dish_names(db_session):
+    """Nama menu yang sama bisa beda harga per tenant.
+
+    Nasi Ayam Bakar: Babun 22k, Padang 23k, Dapoer Bumbu 20k. Peta datar
+    `prices` tidak bisa menyimpan ketiganya, jadi lookup harga wajib per tenant.
+    """
+    order_service = OrderService(db_session)
+    suggestions = await order_service.get_suggestions(None)
+
+    by_vendor = suggestions["prices_by_vendor"]
+    assert by_vendor["Babun"]["Nasi Ayam Bakar"] == 22000
+    assert by_vendor["Padang"]["Nasi Ayam Bakar"] == 23000
+    assert by_vendor["Dapoer Bumbu"]["Nasi Ayam Bakar"] == 20000
+
+    # Prefix vendor tetap bisa dipakai untuk lookup lama
+    assert suggestions["prices"]["Padang Nasi Ayam Bakar"] == 23000
+    assert suggestions["prices"]["Babun Nasi Ayam Bakar"] == 22000
+    assert suggestions["prices"]["Dapoer Bumbu Nasi Ayam Bakar"] == 20000
+
+
+@pytest.mark.asyncio
 async def test_order_without_variant_and_clean_aggregation(db_session):
     session_service = SessionService(db_session)
     order_service = OrderService(db_session)

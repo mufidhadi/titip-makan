@@ -136,6 +136,10 @@ class OrderService:
         tenants_set = set(MASTER_CATALOG.keys())
         menus_dict = defaultdict(set)
         prices_dict = {}
+        # Prices are only unambiguous per vendor: "Nasi Ayam Bakar" costs 22k at Babun,
+        # 23k at Padang, and 20k at Dapoer Bumbu. A flat name->price map silently keeps
+        # the last vendor's price, so expose a vendor-scoped map for price lookups.
+        prices_by_vendor = defaultdict(dict)
 
         # Tenants whose catalog items have redundant vendor prefix that should be stripped for clean menu display
         TENANTS_WITH_VENDOR_PREFIX = {"Babun", "Dapoer Bumbu", "Padang"}
@@ -148,12 +152,15 @@ class OrderService:
                     menus_dict[vendor].add(clean_name)
                     prices_dict[clean_name] = price
                     prices_dict[item] = price
+                    prices_by_vendor[vendor][clean_name] = price
                 else:
                     menus_dict[vendor].add(item)
                     prices_dict[item] = price
+                    prices_by_vendor[vendor][item] = price
                     if item.startswith(f"{vendor} "):
                         unprefixed = item[len(vendor) + 1:]
                         prices_dict[unprefixed] = price
+                        prices_by_vendor[vendor][unprefixed] = price
 
         if session_id:
             session = await self.session_repo.get_by_id(session_id)
@@ -180,7 +187,8 @@ class OrderService:
         return {
             "tenants": sorted(list(tenants_set)),
             "menus": {k: sorted(list(v)) for k, v in menus_dict.items()},
-            "prices": prices_dict
+            "prices": prices_dict,
+            "prices_by_vendor": {k: dict(v) for k, v in prices_by_vendor.items()}
         }
 
     async def delete_order(self, order_id: int) -> bool:

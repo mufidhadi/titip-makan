@@ -56,14 +56,16 @@ async def menu_catalog_view(request: Request, db: AsyncSession = Depends(get_db)
     suggestions = await order_service.get_suggestions(active_session.id if active_session else None)
     
     prices = suggestions.get("prices", {})
+    prices_by_vendor = suggestions.get("prices_by_vendor", {})
     menus = suggestions.get("menus", {})
     
     tenants_data = []
     for tenant in suggestions.get("tenants", []):
         tenant_items = []
         raw_items = menus.get(tenant, [])
+        tenant_prices = prices_by_vendor.get(tenant, {})
         for item in raw_items:
-            price = prices.get(item, 0)
+            price = tenant_prices.get(item, prices.get(item, 0))
             tenant_items.append({
                 "name": item,
                 "price": price,
